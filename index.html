@@ -87,7 +87,8 @@ button{margin-top:16px;font:inherit;font-weight:700;border:0;border-radius:10px;
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
   var CABEZA = '<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0B2545">'
     + '<link rel="icon" type="image/png" href="favicon-32.png"><link rel="apple-touch-icon" href="icono-180.png">'
-    + '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="El Niño Piura">';
+    + '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="El Niño Piura">'
+    + '<script src="app.js"><\/script>';   // al principio, para no perder el aviso de Chrome de que se puede instalar
   function guardar(txt) {
     if (!window.caches) return Promise.resolve();
     var listo = caches.open(CACHE).then(function (c) {
@@ -105,8 +106,6 @@ button{margin-top:16px;font:inherit;font-weight:700;border:0;border-radius:10px;
   function pintar(html, guardadoEl) {
     window.__APP_GUARDADO__ = guardadoEl || '';
     html = html.replace(/<head[^>]*>/i, function (m) { return m + CABEZA; });
-    var pie = '<script src="app.js"><\/script>';
-    html = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, function () { return pie + '</body>'; }) : html + pie;
     document.open(); document.write(html); document.close();
   }
   function fallo() {
