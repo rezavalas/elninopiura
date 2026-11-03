@@ -12,9 +12,13 @@
   var SAMSUNG = /SamsungBrowser/i.test(ua);
   var INSTALADA = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
   var CLAVE = 'tb-app-barra';
-  var bip = window.__bip || null;
+  // Samsung Internet arma su propio instalador y Google Play Protect lo bloquea («se diseñó para una versión
+  // anterior de Android»); desde Chrome la misma app se instala bien. En Samsung se lleva a la persona a Chrome.
+  var bip = SAMSUNG ? null : (window.__bip || null);
+  var CHROME_INTENT = 'intent://' + URL_APP.replace(/^https:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url='
+    + encodeURIComponent('https://play.google.com/store/apps/details?id=com.android.chrome') + ';end';
 
-  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); bip = window.__bip = e; listo(pintarBarra); });
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); if (SAMSUNG) return; bip = window.__bip = e; listo(pintarBarra); });
   window.addEventListener('appinstalled', function () { INSTALADA = true; quitar('tb-app-inst'); cerrarHoja(); });
 
   function listo(f) { if (document.body) f(); else document.addEventListener('DOMContentLoaded', f); }
@@ -57,11 +61,17 @@
     x.addEventListener('click', function () { d.remove(); if (!gris) recordar(); }); d.appendChild(x);
     document.body.insertBefore(d, document.body.firstChild);
   }
+  function abrirChrome() { location.href = CHROME_INTENT; }
   function pintarBarra() {
     if (INSTALADA || cerradaHacePoco()) return;
+    if (SAMSUNG) {
+      barra('tb-app-inst', 'Para instalar la app <b>El Niño Piura</b>, ábrela en <b>Chrome</b>: desde Samsung Internet, Google la bloquea.', 'Abrir en Chrome', abrirChrome);
+      return;
+    }
     barra('tb-app-inst', 'Instala la app <b>El Niño Piura</b> en tu ' + (IOS || ANDROID ? 'celular' : 'computadora') + ': queda con su ícono y se actualiza sola.', 'Instalar', instalar);
   }
   function instalar() {
+    if (SAMSUNG) { hoja(); return; }
     if (bip) {
       var e = bip; bip = window.__bip = null;
       e.prompt();
@@ -93,10 +103,18 @@
       L.push('Listo: busca el ícono de <b>El Niño Piura</b> (la gotita) en tu pantalla de inicio.');
       return { t: 'Instalar en iPhone o iPad', p: L };
     }
+    if (SAMSUNG) {
+      return { t: 'Instalar desde un Samsung', p: [
+        'En el navegador <b>Samsung Internet</b>, Google Play Protect bloquea la instalación con el aviso «se diseñó para una versión anterior de Android». Le pasa a muchas apps web: es por cómo arma la app ese navegador, no por el tablero. Si ya tocaste «Entendido», no se instaló nada.',
+        'Toca <b>«Abrir en Chrome»</b> aquí abajo. El tablero se abre en Chrome, que ya viene en tu celular.',
+        'En Chrome, toca <b>Instalar</b> en la barra de arriba, o el menú ' + IC.menu + ' → <b>«Instalar app»</b>. Desde Chrome Google no la bloquea.',
+        'Listo: busca el ícono de <b>El Niño Piura</b> (la gotita) en tu pantalla de inicio. Si prefieres no instalar, puedes seguir usando el tablero aquí mismo.'
+      ] };
+    }
     if (ANDROID) {
       return { t: 'Instalar en Android', p: [
         'Debe estar abierta en <b>Chrome</b>. Si la abriste desde WhatsApp, Facebook u otra app, toca <b>«Abrir en Chrome»</b> aquí abajo, o el menú ' + IC.menu + ' de arriba a la derecha y <b>«Abrir en Chrome»</b>.',
-        'En Chrome, toca el menú ' + IC.menu + ' (arriba a la derecha) y elige <b>«Instalar app»</b>. Si no aparece, elige <b>«Agregar a la pantalla principal»</b> y luego <b>«Instalar»</b>.' + (SAMSUNG ? ' En Samsung Internet: menú ☰ → <b>«Agregar página a»</b> → <b>«Pantalla de inicio»</b>.' : ''),
+        'En Chrome, toca el menú ' + IC.menu + ' (arriba a la derecha) y elige <b>«Instalar app»</b>. Si no aparece, elige <b>«Agregar a la pantalla principal»</b> y luego <b>«Instalar»</b>.',
         'Listo: busca el ícono de <b>El Niño Piura</b> (la gotita) en tu pantalla de inicio o entre tus aplicaciones.'
       ] };
     }
@@ -116,7 +134,7 @@
     var acc = v.querySelector('.acc');
     if (ANDROID) {
       var a = document.createElement('a'); a.className = 'tb-hb';
-      a.href = 'intent://' + URL_APP.replace(/^https:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(URL_APP) + ';end';
+      a.href = CHROME_INTENT;
       a.textContent = 'Abrir en Chrome'; a.target = '_top'; acc.appendChild(a);
     }
     var c = document.createElement('button'); c.type = 'button'; c.className = 'tb-hb sec'; c.textContent = 'Copiar el enlace';
