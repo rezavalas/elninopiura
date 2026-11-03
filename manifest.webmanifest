@@ -1,0 +1,20 @@
+{
+  "name": "Tablero El Niño Piura",
+  "short_name": "El Niño Piura",
+  "description": "Pronóstico, lluvia, ríos y mar de Piura y La Libertad, con datos que se actualizan cada día. Elaboración: Raúl Edwin Zavala Sánchez.",
+  "lang": "es-PE",
+  "dir": "ltr",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0B2545",
+  "theme_color": "#0B2545",
+  "categories": ["weather", "education"],
+  "icons": [
+    { "src": "icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
