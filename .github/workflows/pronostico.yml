@@ -1,0 +1,33 @@
+# Cada hora descarga el pronóstico de los 148 distritos y lo publica en la rama «datos»
+# (https://raw.githubusercontent.com/rezavalas/elninopiura/datos/pronostico.json).
+# Lo usa el Apps Script de las alertas de lluvia de Gotita.
+name: Pronóstico para las alertas de Gotita
+on:
+  schedule:
+    - cron: '7 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: pronostico
+  cancel-in-progress: false
+jobs:
+  pronostico:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Descargar el pronóstico de Open-Meteo
+        run: python3 pronostico.py pronostico.json
+      - name: Publicar en la rama datos
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ ! -s pronostico.json ]; then echo "Sin pronóstico nuevo: queda el anterior."; exit 0; fi
+          mkdir pub && mv pronostico.json pub/ && cd pub
+          git init -q -b datos
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pronostico.json
+          git commit -qm "Pronóstico $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -qf "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" datos
