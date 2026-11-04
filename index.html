@@ -88,7 +88,7 @@ button{margin-top:16px;font:inherit;font-weight:700;border:0;border-radius:10px;
   var CABEZA = '<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0B2545">'
     + '<link rel="icon" type="image/png" href="favicon-32.png"><link rel="apple-touch-icon" href="icono-180.png">'
     + '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="El Niño Piura">'
-    + '<script src="app.js"><\/script>';   // al principio, para no perder el aviso de Chrome de que se puede instalar
+    + '<script src="config.js"><\/script><script src="app.js"><\/script><script src="alertas.js"><\/script>';   // al principio, para no perder el aviso de Chrome de que se puede instalar
   function guardar(txt) {
     if (!window.caches) return Promise.resolve();
     var listo = caches.open(CACHE).then(function (c) {
@@ -106,6 +106,8 @@ button{margin-top:16px;font:inherit;font-weight:700;border:0;border-radius:10px;
   function pintar(html, guardadoEl) {
     window.__APP_GUARDADO__ = guardadoEl || '';
     html = html.replace(/<head[^>]*>/i, function (m) { return m + CABEZA; });
+    // d3 desde la misma dirección de la app: Chrome puede bloquear scripts de otros sitios escritos así con señal débil
+    html = html.replace(/https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/d3\/[0-9.]+\/d3\.min\.js/g, 'd3.min.js');
     document.open(); document.write(html); document.close();
   }
   function fallo() {

@@ -1,7 +1,30 @@
 /* App del Tablero El Niño Piura: guarda lo necesario para abrir sin señal.
    La app misma se pide primero a la red, así cada cambio llega solo; la página del día la guarda index.html. */
-var VERSION = 'elninopiura-3';
-var BASE = ['./', './index.html', './app.js', './manifest.webmanifest', './icono-192.png', './icono-512.png', './icono-maskable-512.png', './icono-180.png', './favicon-32.png'];
+var VERSION = 'elninopiura-4';
+var BASE = ['./', './index.html', './app.js', './alertas.js', './config.js', './distritos.json', './d3.min.js', './manifest.webmanifest', './icono-192.png', './icono-512.png', './icono-maskable-512.png', './icono-180.png', './favicon-32.png'];
+
+// Avisos de lluvia de Gotita (Firebase Cloud Messaging): llegan aunque la app esté cerrada.
+importScripts('config.js');
+var FB = self.TB_FIREBASE && self.TB_FIREBASE.apiKey ? self.TB_FIREBASE : null;
+if (FB) try {   // si la librería no carga (sin señal), la app igual funciona; los avisos se activan en la próxima visita
+  importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js', 'https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
+  firebase.initializeApp(FB);
+  firebase.messaging().onBackgroundMessage(function (p) {
+    var d = (p && p.data) || {};
+    return self.registration.showNotification(d.titulo || 'Gotita', {
+      body: d.texto || '', icon: 'icono-192.png', badge: 'icono-192.png', tag: 'lluvia-' + (d.ubigeo || ''), renotify: true,
+      vibrate: [200, 100, 200], data: { url: d.url || './' }
+    });
+  });
+} catch (e) {}
+self.addEventListener('notificationclick', function (e) {
+  e.notification.close();
+  var url = (e.notification.data && e.notification.data.url) || './';
+  e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (cs) {
+    for (var i = 0; i < cs.length; i++) if (cs[i].url.indexOf(self.registration.scope) === 0 && 'focus' in cs[i]) return cs[i].focus();
+    return clients.openWindow(url);
+  }));
+});
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(VERSION).then(function (c) { return c.addAll(BASE); }).then(function () { return self.skipWaiting(); }));
@@ -28,7 +51,7 @@ self.addEventListener('fetch', function (e) {
     return;
   }
   // d3 y las letras: se guardan la primera vez para que el tablero se vea igual sin señal
-  if (/^(cdnjs\.cloudflare\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)$/.test(u.hostname)) {
+  if (/^(cdnjs\.cloudflare\.com|fonts\.googleapis\.com|fonts\.gstatic\.com|www\.gstatic\.com)$/.test(u.hostname)) {
     e.respondWith(caches.open('externos').then(function (c) {
       return c.match(r).then(function (m) {
         return m || fetch(r).then(function (resp) { if (resp.ok || resp.type === 'opaque') c.put(r, resp.clone()); return resp; });

@@ -168,7 +168,7 @@
       }
     }
   });
-  window.__tbInstalar = instalar;
+  window.__tbInstalar = instalar; window.__tbAppCss = css; window.__tbAppBarra = barra;
 
   // Al volver a la app después de 30 minutos, se recarga para traer lo último.
   var oculta = 0;
