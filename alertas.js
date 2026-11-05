@@ -125,6 +125,16 @@
         });
       });
       acc.appendChild(des);
+      if (st.push) {
+        var pr = document.createElement('button'); pr.type = 'button'; pr.className = 'tb-hb sec'; pr.textContent = 'Probar el aviso';
+        pr.addEventListener('click', function () {
+          sonar();
+          notificar('Gotita: prueba de alerta', 'Así te llegará el aviso de lluvia para ' + (st.distrito || 'tu distrito') + '.', 'gotita-prueba').then(function (ok) {
+            msg.innerHTML = ok ? 'Te mandé un aviso de prueba. ' + AYUDA_EMERGENTE : 'El celular no dejó mostrar el aviso: revisa que las notificaciones de esta app estén permitidas.';
+          });
+        });
+        acc.appendChild(pr);
+      }
     }
     v.addEventListener('click', function (ev) { if (ev.target === v || ev.target.classList.contains('cerrar')) v.remove(); });
     distritos().then(llenar).catch(function () { sel.innerHTML = '<option>No se pudo cargar la lista</option>'; });
@@ -182,7 +192,8 @@
       }
       msg.textContent = 'Activando los avisos…';
       return codigoCelular().then(guardarSuscripcion).then(function () {
-        fin('Listo. Gotita te avisará si viene lluvia a ' + nombre + '. Es un pronóstico orientativo; las alertas oficiales las dan el SENAMHI y el INDECI.');
+        sonar(); notificar('Gotita: alertas activadas', 'Así te llegará el aviso cuando venga lluvia a ' + nombre + '.', 'gotita-prueba');
+        fin('Listo. Gotita te avisará si viene lluvia a ' + nombre + '. Te mandé un aviso de prueba. ' + AYUDA_EMERGENTE + ' Es un pronóstico orientativo; las alertas oficiales las dan el SENAMHI y el INDECI.');
       });
     }).catch(function (e) {
       if (!antes) st.push = 0;
@@ -221,6 +232,33 @@
     return h + '</ul>';
   }
 
+  /* ---------- sonido de alerta y aviso arriba de la pantalla ---------- */
+  var AYUDA_EMERGENTE = 'Si el aviso no apareció arriba de la pantalla o no sonó: mantén presionado el aviso de Gotita en la barra de notificaciones → ⚙ (Ajustes) → elige <b>Alerta</b> y activa <b>Mostrar como emergente</b> y el <b>sonido</b>.';
+  function sonar(fuerte) {   // tres pitidos dobles, como una alarma corta (sin archivos: lo genera el navegador)
+    try {
+      var C = window.AudioContext || window.webkitAudioContext;
+      if (C) {
+        var ctx = sonar.ctx || (sonar.ctx = new C());
+        if (ctx.state === 'suspended') ctx.resume();
+        var t0 = ctx.currentTime + 0.05, veces = fuerte === false ? 1 : 3;
+        for (var i = 0; i < veces; i++) [880, 1320].forEach(function (f, k) {
+          var o = ctx.createOscillator(), g = ctx.createGain(), t = t0 + i * 0.42 + k * 0.16;
+          o.type = 'square'; o.frequency.value = f;
+          g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+          o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.16);
+        });
+      }
+    } catch (e) {}
+    try { if (navigator.vibrate) navigator.vibrate(fuerte === false ? [200] : [400, 150, 400, 150, 400]); } catch (e) {}
+  }
+  function notificar(titulo, texto, tag) {   // el globo de aviso del celular, también con la app abierta
+    if (!('Notification' in window) || Notification.permission !== 'granted' || !('serviceWorker' in navigator)) return Promise.resolve(false);
+    return navigator.serviceWorker.ready.then(function (r) {
+      return r.showNotification(titulo, { body: texto, icon: 'icono-192.png', badge: 'icono-192.png', tag: tag || 'gotita',
+        renotify: true, requireInteraction: true, silent: false, vibrate: [400, 150, 400, 150, 400], data: { url: './' } }).then(function () { return true; });
+    }).catch(function () { return false; });
+  }
+
   /* ---------- al abrir la app ---------- */
   function decir(html, botones) {
     if (window.__tbGotitaDecir && window.__tbGotitaDecir(html, botones)) return;
@@ -234,12 +272,15 @@
       if (mia) {   // hay aviso en el distrito elegido
         var clave = V.emitida + st.ubigeo; if (st.vista === clave) return;
         st.vista = clave; guardar();
+        sonar(); notificar(mia.titulo, mia.texto, 'lluvia-' + mia.u);
         return decir('<b>' + escapar(mia.titulo.replace(/^Gotita: /, '')) + '</b>. ' + escapar(mia.texto), [{ t: 'Entendido', prim: true, f: function () {} }]);
       }
       if (Date.now() - (st.region_visto || 0) < 3 * 3600e3) return;   // el resumen de la región, a lo más cada 3 horas
       st.region_visto = Date.now(); st.preguntado = 1; guardar();
       var n = V.lista.length, nombres = V.lista.slice(0, 3).map(function (a) { return escapar(a.distrito) + (a.nivel === 'fuerte' ? ' (lluvia fuerte)' : ''); });
       var txt = 'Ahora hay avisos de lluvia en <b>' + n + ' distrito' + (n > 1 ? 's' : '') + '</b>: ' + nombres.join(', ') + (n > 3 ? ' y ' + (n - 3) + ' más' : '') + '.';
+      sonar(false);
+      if (st.ubigeo) notificar('Gotita: avisos de lluvia en ' + n + ' distrito' + (n > 1 ? 's' : ''), V.lista.slice(0, 3).map(function (a) { return a.distrito; }).join(', ') + (n > 3 ? ' y ' + (n - 3) + ' más' : '') + '. En ' + st.distrito + ' no hay aviso por ahora.', 'gotita-region');
       if (st.ubigeo) decir(txt + ' En ' + escapar(st.distrito) + ' no hay aviso por ahora.', [{ t: 'Entendido', f: function () {} }, { t: 'Ver la lista', prim: true, f: hoja }]);
       else decir(txt + ' ¿Te aviso cuando venga lluvia a tu distrito?', [{ t: 'Ahora no', f: function () {} }, { t: 'Ver avisos y elegir', prim: true, f: hoja }]);
     });
@@ -254,6 +295,7 @@
     firebaseListo().then(function () {
       firebase.messaging().onMessage(function (p) {   // aviso que llega con la app abierta: lo dice Gotita
         var d = (p && p.data) || {}; if (!d.titulo) return;
+        sonar(); notificar(d.titulo, d.texto || '', 'lluvia-' + (d.ubigeo || ''));
         decir('<b>' + escapar(d.titulo.replace(/^Gotita: /, '')) + '</b>. ' + escapar(d.texto || ''), [{ t: 'Entendido', prim: true, f: function () {} }]);
       });
     }).catch(function () {});
