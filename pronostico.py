@@ -16,7 +16,7 @@ ESPERAS = [0, 5, 15, 40]   # segundos antes de cada intento
 def pedir(grupo):
     url = ('https://api.open-meteo.com/v1/forecast?latitude=' + ','.join(str(d[4]) for d in grupo)
            + '&longitude=' + ','.join(str(d[5]) for d in grupo)
-           + '&hourly=' + VARIABLES + '&forecast_hours=9&timezone=America%2FLima')
+           + '&hourly=' + VARIABLES + '&forecast_hours=12&timezone=America%2FLima')
     ultimo = ''
     for espera in ESPERAS:
         time.sleep(espera)

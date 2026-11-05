@@ -86,6 +86,7 @@
     var v = document.createElement('div'); v.className = 'tb-velo'; v.id = 'tb-al-hoja';
     v.innerHTML = '<div class="tb-hoja" role="dialog" aria-modal="true" aria-labelledby="tb-al-t"><button type="button" class="cerrar" aria-label="Cerrar">×</button>'
       + '<h3 id="tb-al-t">Alertas de lluvia de Gotita</h3>'
+      + '<div class="tb-al-vig" aria-live="polite"><p class="tb-al-vt">Buscando los avisos de ahora…</p></div>'
       + '<p>Elige el distrito donde vives o trabajas. Si el pronóstico da lluvia allí, o si la lluvia viene con el viento desde un distrito vecino, te llega un aviso al celular.</p>'
       + '<div class="tb-al-reg" role="group" aria-label="Región"><button type="button" data-r="Piura">Piura</button><button type="button" data-r="La Libertad">La Libertad</button></div>'
       + '<label class="tb-al-l" for="tb-al-sel">Distrito</label><select id="tb-al-sel" class="tb-al-sel"><option>Cargando…</option></select>'
@@ -127,6 +128,16 @@
     }
     v.addEventListener('click', function (ev) { if (ev.target === v || ev.target.classList.contains('cerrar')) v.remove(); });
     distritos().then(llenar).catch(function () { sel.innerHTML = '<option>No se pudo cargar la lista</option>'; });
+    vigentes().then(function (V) {
+      var caja = v.querySelector('.tb-al-vig'); if (!caja) return;
+      caja.innerHTML = listaHtml(V);
+      caja.querySelectorAll('button[data-u]').forEach(function (b) {
+        b.addEventListener('click', function () {   // elegir ese distrito
+          region = b.getAttribute('data-r');
+          distritos().then(function () { llenar(); sel.value = b.getAttribute('data-u'); sel.focus(); sel.scrollIntoView({ block: 'center', behavior: 'smooth' }); });
+        });
+      });
+    });
   }
   function estilos() {
     if (document.getElementById('tb-al-css')) return;
@@ -137,7 +148,17 @@
       + '.tb-al-l{display:block;font-weight:700;color:#0B2545;margin-bottom:4px}'
       + '.tb-al-sel{width:100%;font:inherit;font-size:16px;padding:10px;border:1px solid #C9D4E3;border-radius:9px;background:#fff;color:#0E1C2F}'
       + '.tb-al-priv{font-size:.82rem;color:#66768C;margin:10px 0}'
-      + '.tb-al-msg{margin:10px 0 0;color:#0B2545;font-weight:600}.tb-al-msg:empty{display:none}';
+      + '.tb-al-msg{margin:10px 0 0;color:#0B2545;font-weight:600}.tb-al-msg:empty{display:none}'
+      + '.tb-al-vig{margin:2px 0 12px;padding:10px 12px;border-radius:12px;background:#F5F8FC;border:1px solid #E2E8F0}'
+      + '.tb-al-vt{margin:0 0 6px;font-size:.9rem;color:#0B2545}.tb-al-nada{margin:0;font-size:.9rem;color:#475569}'
+      + '.tb-al-lista{list-style:none;margin:0;padding:0;max-height:210px;overflow:auto}'
+      + '.tb-al-lista li{list-style:none;margin:0;padding:0;position:static;counter-increment:none;background:none}'
+      + '.tb-al-lista li::before,.tb-al-lista li::marker{content:none!important;display:none!important}'
+      + '.tb-al-lista li+li{border-top:1px solid #E2E8F0}'
+      + '.tb-al-lista button{all:unset;display:block;width:100%;box-sizing:border-box;padding:8px 2px;cursor:pointer;color:#0E1C2F}'
+      + '.tb-al-lista small{display:block;color:#475569;font-size:.8rem;line-height:1.3;margin-top:3px}'
+      + '.tb-al-chip{display:inline-block;font-size:.72rem;font-weight:800;border-radius:999px;padding:2px 8px;margin-right:6px;vertical-align:1px}'
+      + '.tb-al-rg{color:#66768C;font-size:.8rem}';
     document.head.appendChild(s);
   }
 
@@ -170,23 +191,58 @@
     });
   }
 
+  /* ---------- avisos vigentes en Piura y La Libertad ---------- */
+  var VIG = null;
+  function vigentes() {
+    if (VIG) return VIG;
+    VIG = (FB ? fetch('https://firestore.googleapis.com/v1/projects/' + FB.projectId + '/databases/(default)/documents/alertas/vigentes?key=' + FB.apiKey)
+      .then(function (r) { return r.ok ? r.json() : null; }) : Promise.resolve(null)).then(function (j) {
+        var f = j && j.fields || {}, emitida = f.emitida && f.emitida.timestampValue, mapa = f.alertas && f.alertas.mapValue && f.alertas.mapValue.fields;
+        if (!emitida || !mapa || Date.now() - new Date(emitida) > 3 * 3600e3) return { emitida: emitida, lista: [] };
+        var orden = { fuerte: 0, lluvia: 1, 'se acerca': 2 }, lista = Object.keys(mapa).map(function (u) {
+          var a = mapa[u].mapValue.fields, v = function (k) { return a[k] ? a[k].stringValue : ''; };
+          return { u: u, distrito: v('distrito'), nivel: v('nivel'), titulo: v('titulo'), texto: v('texto'), region: u.slice(0, 2) === '13' ? 'La Libertad' : 'Piura' };
+        });
+        lista.sort(function (a, b) { return (orden[a.nivel] - orden[b.nivel]) || a.distrito.localeCompare(b.distrito, 'es'); });
+        return { emitida: emitida, lista: lista };
+      }).catch(function () { VIG = null; return { lista: [] }; });
+    return VIG;
+  }
+  var NIVEL = { fuerte: ['Lluvia fuerte', '#B91C1C', '#FEE2E2'], lluvia: ['Lluvia', '#1D4ED8', '#DBEAFE'], 'se acerca': ['Se acerca', '#15803D', '#DCFCE7'] };
+  function listaHtml(V) {
+    if (!V.lista.length) return '<p class="tb-al-nada">Ahora no hay avisos de lluvia en Piura ni en La Libertad.</p>';
+    var hora = V.emitida ? new Date(V.emitida).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Lima' }) : '';
+    var h = '<p class="tb-al-vt"><b>Avisos vigentes:</b> ' + V.lista.length + ' distrito' + (V.lista.length > 1 ? 's' : '') + (hora ? ' · revisado a las ' + hora : '') + '</p><ul class="tb-al-lista">';
+    V.lista.forEach(function (a) {
+      var n = NIVEL[a.nivel] || NIVEL.lluvia;
+      h += '<li><button type="button" data-u="' + a.u + '" data-r="' + a.region + '"><span class="tb-al-chip" style="color:' + n[1] + ';background:' + n[2] + '">' + n[0] + '</span>'
+        + '<b>' + escapar(a.distrito) + '</b> <span class="tb-al-rg">' + escapar(a.region) + '</span><small>' + escapar(a.texto.replace(/ Pronóstico orientativo\.$/, '')) + '</small></button></li>';
+    });
+    return h + '</ul>';
+  }
+
   /* ---------- al abrir la app ---------- */
   function decir(html, botones) {
     if (window.__tbGotitaDecir && window.__tbGotitaDecir(html, botones)) return;
     if (window.__tbAppBarra) window.__tbAppBarra('tb-al-barra', html, botones && botones[1] ? botones[1].t : null, botones && botones[1] ? botones[1].f : null, false);
   }
   function alertaVigente() {
-    if (!FB || !st.ubigeo) return;
-    fetch('https://firestore.googleapis.com/v1/projects/' + FB.projectId + '/databases/(default)/documents/alertas/vigentes?key=' + FB.apiKey)
-      .then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
-        if (!j || !j.fields) return;
-        var emitida = j.fields.emitida && j.fields.emitida.timestampValue, mapa = j.fields.alertas && j.fields.alertas.mapValue && j.fields.alertas.mapValue.fields;
-        if (!emitida || !mapa || Date.now() - new Date(emitida) > 3 * 3600e3) return;
-        var a = mapa[st.ubigeo] && mapa[st.ubigeo].mapValue && mapa[st.ubigeo].mapValue.fields; if (!a) return;
-        var clave = emitida + st.ubigeo; if (st.vista === clave) return;
+    if (!FB) return;
+    vigentes().then(function (V) {
+      if (!V.lista.length) return;
+      var mia = st.ubigeo && V.lista.filter(function (a) { return a.u === st.ubigeo; })[0];
+      if (mia) {   // hay aviso en el distrito elegido
+        var clave = V.emitida + st.ubigeo; if (st.vista === clave) return;
         st.vista = clave; guardar();
-        decir('<b>' + escapar(a.titulo.stringValue.replace(/^Gotita: /, '')) + '</b>. ' + escapar(a.texto.stringValue), [{ t: 'Entendido', prim: true, f: function () {} }]);
-      }).catch(function () {});
+        return decir('<b>' + escapar(mia.titulo.replace(/^Gotita: /, '')) + '</b>. ' + escapar(mia.texto), [{ t: 'Entendido', prim: true, f: function () {} }]);
+      }
+      if (Date.now() - (st.region_visto || 0) < 3 * 3600e3) return;   // el resumen de la región, a lo más cada 3 horas
+      st.region_visto = Date.now(); st.preguntado = 1; guardar();
+      var n = V.lista.length, nombres = V.lista.slice(0, 3).map(function (a) { return escapar(a.distrito) + (a.nivel === 'fuerte' ? ' (lluvia fuerte)' : ''); });
+      var txt = 'Ahora hay avisos de lluvia en <b>' + n + ' distrito' + (n > 1 ? 's' : '') + '</b>: ' + nombres.join(', ') + (n > 3 ? ' y ' + (n - 3) + ' más' : '') + '.';
+      if (st.ubigeo) decir(txt + ' En ' + escapar(st.distrito) + ' no hay aviso por ahora.', [{ t: 'Entendido', f: function () {} }, { t: 'Ver la lista', prim: true, f: hoja }]);
+      else decir(txt + ' ¿Te aviso cuando venga lluvia a tu distrito?', [{ t: 'Ahora no', f: function () {} }, { t: 'Ver avisos y elegir', prim: true, f: hoja }]);
+    });
   }
   function mantener() {
     // el código del celular puede cambiar: se revisa al abrir y se vuelve a guardar si cambió (o cada 7 días)
