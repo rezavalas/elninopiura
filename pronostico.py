@@ -1,4 +1,4 @@
-"""Pronóstico por hora de los 148 distritos de Piura y La Libertad para las alertas de lluvia de Gotita.
+"""Pronóstico por hora de los distritos de distritos.json (Tumbes, Piura, Lambayeque y La Libertad) para las alertas de lluvia de Gotita.
 
 Lo ejecuta GitHub cada hora (.github/workflows/pronostico.yml) y lo publica en la rama «datos».
 El Apps Script de las alertas lo lee de ahí: Open-Meteo limita por dirección IP y las de Apps Script

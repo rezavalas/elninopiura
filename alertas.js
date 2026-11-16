@@ -34,6 +34,11 @@
     fbListo.catch(function () { fbListo = null; });
     return fbListo;
   }
+  // regiones con alertas, de norte a sur; el ubigeo empieza con el código de la región
+  var REGIONES = ['Tumbes', 'Piura', 'Lambayeque', 'La Libertad'];
+  var CAPITAL = { 'Tumbes': '240101', 'Piura': '200101', 'Lambayeque': '140101', 'La Libertad': '130101' };
+  var PREF = { '24': 'Tumbes', '20': 'Piura', '14': 'Lambayeque', '13': 'La Libertad' };
+  function regionDe(u) { return PREF[String(u).slice(0, 2)] || ''; }
   var DIST = null;
   function distritos() { return DIST ? Promise.resolve(DIST) : fetch('distritos.json').then(function (r) { return r.json(); }).then(function (d) { DIST = d; return d; }); }
   function escapar(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -79,6 +84,12 @@
     }).then(function (t) { if (!t) throw new Error('el celular no dio un código para avisos'); return t; });
   }
 
+  function kmEntre(a1, o1, a2, o2) {
+    var r = Math.PI / 180, x = Math.sin((a2 - a1) * r / 2), y = Math.sin((o2 - o1) * r / 2);
+    return 12742 * Math.asin(Math.sqrt(x * x + Math.cos(a1 * r) * Math.cos(a2 * r) * y * y));
+  }
+  var SIRENA_LINK = '<a href="sirena.mp3" download="Sirena Gotita.mp3">descarga la sirena</a>';
+
   /* ---------- la hoja para elegir el distrito ---------- */
   function hoja() {
     if (window.__tbAppCss) window.__tbAppCss();
@@ -88,14 +99,16 @@
       + '<h3 id="tb-al-t">Alertas de lluvia de Gotita</h3>'
       + '<div class="tb-al-vig" aria-live="polite"><p class="tb-al-vt">Buscando los avisos de ahora…</p></div>'
       + '<p>Elige el distrito donde vives o trabajas. Si el pronóstico da lluvia allí, o si la lluvia viene con el viento desde un distrito vecino, te llega un aviso al celular.</p>'
-      + '<div class="tb-al-reg" role="group" aria-label="Región"><button type="button" data-r="Piura">Piura</button><button type="button" data-r="La Libertad">La Libertad</button></div>'
+      + '<div class="tb-al-reg" role="group" aria-label="Región">' + REGIONES.map(function (r) { return '<button type="button" data-r="' + r + '">' + r + '</button>'; }).join('') + '</div>'
+      + ('geolocation' in navigator ? '<button type="button" class="tb-al-ubi">📍 Usar mi ubicación</button>' : '')
       + '<label class="tb-al-l" for="tb-al-sel">Distrito</label><select id="tb-al-sel" class="tb-al-sel"><option>Cargando…</option></select>'
-      + '<p class="tb-al-priv">Solo se guarda tu distrito y un código anónimo del celular para enviarte el aviso. Puedes desactivarlo cuando quieras. Es un pronóstico orientativo del modelo.</p>'
+      + '<p class="tb-al-priv">Solo se guarda tu distrito y un código anónimo del celular para enviarte el aviso; tu ubicación no se guarda. Puedes desactivarlo cuando quieras. Es un pronóstico orientativo del modelo.</p>'
+      + '<p class="tb-al-priv">🚨 El aviso llega con sirena. Con la app cerrada suena el tono de notificaciones del celular; para que también sea la sirena, ' + SIRENA_LINK + ' y elígela como sonido de las notificaciones de esta app (Ajustes → Notificaciones → El Niño Piura → Sonido).</p>'
       + '<div class="acc"></div><p class="tb-al-msg" aria-live="polite"></p></div>';
     estilos();
     document.body.appendChild(v);
     var sel = v.querySelector('select'), msg = v.querySelector('.tb-al-msg'), acc = v.querySelector('.acc');
-    var region = st.region || 'Piura';
+    var region = REGIONES.indexOf(st.region) >= 0 ? st.region : 'Piura';
     function llenar() {
       v.querySelectorAll('.tb-al-reg button').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-r') === region ? 'true' : 'false'); });
       var html = '', prov = null;
@@ -105,11 +118,27 @@
       });
       sel.innerHTML = html + '</optgroup>';
       if (!st.ubigeo || st.region !== region) {   // por omisión, la capital de la región
-        var cap = region === 'Piura' ? '200101' : '130101';
-        sel.value = cap;
+        sel.value = CAPITAL[region];
       }
     }
     v.querySelectorAll('.tb-al-reg button').forEach(function (b) { b.addEventListener('click', function () { region = b.getAttribute('data-r'); llenar(); }); });
+    var ubi = v.querySelector('.tb-al-ubi');
+    if (ubi) ubi.addEventListener('click', function () {   // la ubicación se usa solo aquí, para elegir el distrito: no se guarda ni se envía
+      msg.textContent = 'Buscando tu ubicación…'; ubi.disabled = true;
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        distritos().then(function (D) {
+          var la = pos.coords.latitude, lo = pos.coords.longitude, mejor = null, km = 1e9;
+          D.forEach(function (d) { var k = kmEntre(la, lo, d[4], d[5]); if (k < km) { km = k; mejor = d; } });
+          ubi.disabled = false;
+          if (!mejor || km > 60) { msg.innerHTML = 'Gotita avisa por ahora en <b>' + REGIONES.slice(0, -1).join(', ') + ' y ' + REGIONES[REGIONES.length - 1] + '</b>, y tu ubicación queda lejos de esas regiones. Puedes elegir un distrito de la lista.'; return; }
+          region = mejor[3]; llenar(); sel.value = mejor[0];
+          msg.innerHTML = 'Estás en <b>' + escapar(mejor[1]) + '</b> o cerca (provincia de ' + escapar(mejor[2]) + ', ' + escapar(mejor[3]) + '). Si es correcto, toca «' + escapar(act.textContent) + '».';
+        });
+      }, function () {
+        ubi.disabled = false;
+        msg.textContent = 'No pude saber tu ubicación: el celular no dio permiso o no tiene señal de GPS. Elige tu distrito en la lista.';
+      }, { enableHighAccuracy: false, timeout: 20000, maximumAge: 600000 });
+    });
     var act = document.createElement('button'); act.type = 'button'; act.className = 'tb-hb'; act.textContent = st.ubigeo ? 'Guardar' : 'Activar alertas';
     act.addEventListener('click', function () { activar(sel.value, msg, act); });
     acc.appendChild(act);
@@ -168,7 +197,9 @@
       + '.tb-al-lista button{all:unset;display:block;width:100%;box-sizing:border-box;padding:8px 2px;cursor:pointer;color:#0E1C2F}'
       + '.tb-al-lista small{display:block;color:#475569;font-size:.8rem;line-height:1.3;margin-top:3px}'
       + '.tb-al-chip{display:inline-block;font-size:.72rem;font-weight:800;border-radius:999px;padding:2px 8px;margin-right:6px;vertical-align:1px}'
-      + '.tb-al-rg{color:#66768C;font-size:.8rem}';
+      + '.tb-al-rg{color:#66768C;font-size:.8rem}'
+      + '.tb-al-ubi{display:block;width:100%;font:inherit;font-weight:700;border:1px solid #C9D4E3;border-radius:9px;padding:9px;margin:0 0 12px;background:#fff;color:#0B2545;cursor:pointer}'
+      + '.tb-al-ubi:disabled{opacity:.6}';
     document.head.appendChild(s);
   }
 
@@ -202,7 +233,7 @@
     });
   }
 
-  /* ---------- avisos vigentes en Piura y La Libertad ---------- */
+  /* ---------- avisos vigentes en las regiones con alertas ---------- */
   var VIG = null;
   function vigentes() {
     if (VIG) return VIG;
@@ -212,7 +243,7 @@
         if (!emitida || !mapa || Date.now() - new Date(emitida) > 3 * 3600e3) return { emitida: emitida, lista: [] };
         var orden = { fuerte: 0, lluvia: 1, 'se acerca': 2 }, lista = Object.keys(mapa).map(function (u) {
           var a = mapa[u].mapValue.fields, v = function (k) { return a[k] ? a[k].stringValue : ''; };
-          return { u: u, distrito: v('distrito'), nivel: v('nivel'), titulo: v('titulo'), texto: v('texto'), region: u.slice(0, 2) === '13' ? 'La Libertad' : 'Piura' };
+          return { u: u, distrito: v('distrito'), nivel: v('nivel'), titulo: v('titulo'), texto: v('texto'), region: regionDe(u) };
         });
         lista.sort(function (a, b) { return (orden[a.nivel] - orden[b.nivel]) || a.distrito.localeCompare(b.distrito, 'es'); });
         return { emitida: emitida, lista: lista };
@@ -221,7 +252,7 @@
   }
   var NIVEL = { fuerte: ['Lluvia fuerte', '#B91C1C', '#FEE2E2'], lluvia: ['Lluvia', '#1D4ED8', '#DBEAFE'], 'se acerca': ['Se acerca', '#15803D', '#DCFCE7'] };
   function listaHtml(V) {
-    if (!V.lista.length) return '<p class="tb-al-nada">Ahora no hay avisos de lluvia en Piura ni en La Libertad.</p>';
+    if (!V.lista.length) return '<p class="tb-al-nada">Ahora no hay avisos de lluvia en ' + REGIONES.slice(0, -1).join(', ') + ' ni en ' + REGIONES[REGIONES.length - 1] + '.</p>';
     var hora = V.emitida ? new Date(V.emitida).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Lima' }) : '';
     var h = '<p class="tb-al-vt"><b>Avisos vigentes:</b> ' + V.lista.length + ' distrito' + (V.lista.length > 1 ? 's' : '') + (hora ? ' · revisado a las ' + hora : '') + '</p><ul class="tb-al-lista">';
     V.lista.forEach(function (a) {
@@ -233,29 +264,44 @@
   }
 
   /* ---------- sonido de alerta y aviso arriba de la pantalla ---------- */
-  var AYUDA_EMERGENTE = 'Si el aviso no apareció arriba de la pantalla o no sonó: mantén presionado el aviso de Gotita en la barra de notificaciones → ⚙ (Ajustes) → elige <b>Alerta</b> y activa <b>Mostrar como emergente</b> y el <b>sonido</b>.';
-  function sonar(fuerte) {   // tres pitidos dobles, como una alarma corta (sin archivos: lo genera el navegador)
+  var AYUDA_EMERGENTE = 'Si el aviso no apareció arriba de la pantalla o no sonó: mantén presionado el aviso de Gotita en la barra de notificaciones → ⚙ (Ajustes) → elige <b>Alerta</b> y activa <b>Mostrar como emergente</b> y el <b>sonido</b>. Para que con la app cerrada suene la sirena, ' + SIRENA_LINK + ' y elígela en <b>Sonido</b>.';
+  // Vibración en pulsos largos, como sirena (Android 8 o más usa la del canal de notificaciones).
+  var VIBRA_SIRENA = [800, 200, 800, 200, 800, 200, 800];
+  function sonar(fuerte) {   // sirena que sube y baja (650 ↔ 1450 Hz), 4 ciclos; 1 ciclo si fuerte === false. La genera el navegador, sin archivos
+    if (Date.now() - (sonar.t || 0) < 15000) return;   // un mismo aviso puede pedir la sirena dos veces (al abrir y al leer el aviso): suena una
+    sonar.t = Date.now();
+    try { if (navigator.vibrate) navigator.vibrate(fuerte === false ? [800] : VIBRA_SIRENA); } catch (e) {}
     try {
-      var C = window.AudioContext || window.webkitAudioContext;
-      if (C) {
-        var ctx = sonar.ctx || (sonar.ctx = new C());
-        if (ctx.state === 'suspended') ctx.resume();
-        var t0 = ctx.currentTime + 0.05, veces = fuerte === false ? 1 : 3;
-        for (var i = 0; i < veces; i++) [880, 1320].forEach(function (f, k) {
-          var o = ctx.createOscillator(), g = ctx.createGain(), t = t0 + i * 0.42 + k * 0.16;
-          o.type = 'square'; o.frequency.value = f;
-          g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
-          o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.16);
+      var C = window.AudioContext || window.webkitAudioContext; if (!C) return;
+      var ctx = sonar.ctx || (sonar.ctx = new C()), hecho = false;
+      var tocar = function () {
+        if (hecho) return; hecho = true;
+        var per = 1.1, ciclos = fuerte === false ? 1 : 4, t0 = ctx.currentTime + 0.05, fin = t0 + per * ciclos;
+        var o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain(), g2 = ctx.createGain(), lp = ctx.createBiquadFilter();
+        o.type = 'sawtooth'; o2.type = 'square'; lp.type = 'lowpass'; lp.frequency.value = 3200; g2.gain.value = 0.35;
+        [o, o2].forEach(function (x) {
+          x.frequency.setValueAtTime(650, t0);
+          for (var i = 0; i < ciclos; i++) { x.frequency.linearRampToValueAtTime(1450, t0 + i * per + per / 2); x.frequency.linearRampToValueAtTime(650, t0 + (i + 1) * per); }
         });
-      }
+        g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.2, t0 + 0.06);
+        g.gain.setValueAtTime(0.2, fin - 0.18); g.gain.exponentialRampToValueAtTime(0.0001, fin);
+        o.connect(lp); o2.connect(g2); g2.connect(lp); lp.connect(g); g.connect(ctx.destination);
+        o.start(t0); o2.start(t0); o.stop(fin + 0.02); o2.stop(fin + 0.02);
+      };
+      if (ctx.state === 'running') return tocar();
+      // el navegador puede pedir un toque antes de sonar: entonces suena con el primer toque (hasta 2 minutos después)
+      var p = ctx.resume(); if (p && p.then) p.then(function () { if (ctx.state === 'running') tocar(); }).catch(function () {});
+      var alTocar = function () { quitar(); ctx.resume().then(tocar).catch(function () {}); };
+      var quitar = function () { document.removeEventListener('pointerdown', alTocar, true); document.removeEventListener('keydown', alTocar, true); };
+      document.addEventListener('pointerdown', alTocar, true); document.addEventListener('keydown', alTocar, true);
+      setTimeout(quitar, 120000);
     } catch (e) {}
-    try { if (navigator.vibrate) navigator.vibrate(fuerte === false ? [200] : [400, 150, 400, 150, 400]); } catch (e) {}
   }
   function notificar(titulo, texto, tag) {   // el globo de aviso del celular, también con la app abierta
     if (!('Notification' in window) || Notification.permission !== 'granted' || !('serviceWorker' in navigator)) return Promise.resolve(false);
     return navigator.serviceWorker.ready.then(function (r) {
       return r.showNotification(titulo, { body: texto, icon: 'icono-192.png', badge: 'icono-192.png', tag: tag || 'gotita',
-        renotify: true, requireInteraction: true, silent: false, vibrate: [400, 150, 400, 150, 400], data: { url: './' } }).then(function () { return true; });
+        renotify: true, requireInteraction: true, silent: false, vibrate: VIBRA_SIRENA, data: { url: './' } }).then(function () { return true; });
     }).catch(function () { return false; });
   }
 
@@ -318,6 +364,15 @@
     var p = document.getElementById('tb-app-pie');
     if (p) p.insertBefore(b, p.firstChild); else { p = document.createElement('p'); p.appendChild(b); pie.insertBefore(p, pie.firstChild); }
   }
-  function iniciar() { alPie(); setTimeout(function () { alertaVigente(); mantener(); preguntar(); }, 2500); }
+  function sirenaDelAviso() {
+    if (/[?&]sirena=1/.test(location.search)) {   // se abrió tocando el aviso: suena la sirena y Gotita lo dice
+      try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+      sonar(); st.vista = ''; guardar();
+    }
+    if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function (e) {
+      if (e.data && e.data.tipo === 'sirena') sonar();
+    });
+  }
+  function iniciar() { sirenaDelAviso(); alPie(); setTimeout(function () { alertaVigente(); mantener(); preguntar(); }, 2500); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();

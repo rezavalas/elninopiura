@@ -1,9 +1,12 @@
 /* App del Tablero El Niño Piura: guarda lo necesario para abrir sin señal.
    La app misma se pide primero a la red, así cada cambio llega solo; la página del día la guarda index.html. */
-var VERSION = 'elninopiura-5';
-var BASE = ['./', './index.html', './app.js', './alertas.js', './config.js', './distritos.json', './d3.min.js', './manifest.webmanifest', './icono-192.png', './icono-512.png', './icono-maskable-512.png', './icono-180.png', './favicon-32.png'];
+var VERSION = 'elninopiura-6';
+var BASE = ['./', './index.html', './app.js', './alertas.js', './config.js', './distritos.json', './sirena.mp3', './d3.min.js', './manifest.webmanifest', './icono-192.png', './icono-512.png', './icono-maskable-512.png', './icono-180.png', './favicon-32.png'];
 
 // Avisos de lluvia de Gotita (Firebase Cloud Messaging): llegan aunque la app esté cerrada.
+// El aviso vibra en pulsos largos, como sirena; la sirena suena al abrirlo (o en la app si está abierta).
+// Con la app cerrada suena el tono de notificaciones del celular (la web no puede cambiarlo).
+var VIBRA_SIRENA = [800, 200, 800, 200, 800, 200, 800];
 importScripts('config.js');
 var FB = self.TB_FIREBASE && self.TB_FIREBASE.apiKey ? self.TB_FIREBASE : null;
 if (FB) try {   // si la librería no carga (sin señal), la app igual funciona; los avisos se activan en la próxima visita
@@ -11,18 +14,25 @@ if (FB) try {   // si la librería no carga (sin señal), la app igual funciona;
   firebase.initializeApp(FB);
   firebase.messaging().onBackgroundMessage(function (p) {
     var d = (p && p.data) || {};
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (cs) {   // si la app está abierta detrás, que suene la sirena
+      cs.forEach(function (c) { c.postMessage({ tipo: 'sirena' }); });
+    });
     return self.registration.showNotification(d.titulo || 'Gotita', {
       body: d.texto || '', icon: 'icono-192.png', badge: 'icono-192.png', tag: 'lluvia-' + (d.ubigeo || ''), renotify: true,
-      requireInteraction: true, silent: false, vibrate: [400, 150, 400, 150, 400], data: { url: d.url || './' },
+      requireInteraction: true, silent: false, vibrate: VIBRA_SIRENA, data: { url: d.url || './', sirena: 1 },
       actions: [{ action: 'ver', title: 'Ver en la app' }]
     });
   });
 } catch (e) {}
 self.addEventListener('notificationclick', function (e) {
   e.notification.close();
-  var url = (e.notification.data && e.notification.data.url) || './';
+  var dt = e.notification.data || {}, url = dt.url || './';
+  if (dt.sirena) url += (url.indexOf('?') < 0 ? '?' : '&') + 'sirena=1';   // la app hace sonar la sirena al abrirse
   e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (cs) {
-    for (var i = 0; i < cs.length; i++) if (cs[i].url.indexOf(self.registration.scope) === 0 && 'focus' in cs[i]) return cs[i].focus();
+    for (var i = 0; i < cs.length; i++) if (cs[i].url.indexOf(self.registration.scope) === 0 && 'focus' in cs[i]) {
+      if (dt.sirena) cs[i].postMessage({ tipo: 'sirena' });
+      return cs[i].focus();
+    }
     return clients.openWindow(url);
   }));
 });

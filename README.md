@@ -16,6 +16,10 @@ La app se actualiza sola: cada vez que se abre descarga la página del día. Sin
 
 Este repositorio guarda solo la app (página de arranque, íconos y el archivo que permite abrirla sin conexión). Los datos los arma cada mañana la actualización automática del tablero y los publica en Google Drive; la app los lee de ahí al abrirse.
 
+## Alertas de lluvia de Gotita
+
+Cada persona elige su distrito (o toca «Usar mi ubicación») en Tumbes, Piura, Lambayeque o La Libertad. Si el pronóstico da lluvia allí, o si la lluvia viene con el viento desde un distrito vecino, le llega un aviso al celular. Con la app abierta, o al abrir el aviso, suena una sirena; con la app cerrada suena el tono de notificaciones del celular, que se puede cambiar por `sirena.mp3`. El pronóstico de los distritos (`distritos.json`) lo descarga cada media hora `pronostico.py`.
+
 Fuentes: avisos del SENAMHI, comunicados del ENFEN, serie ICEN del IGP, índices OISST de NOAA/CPC, boletines del IMARPE y la DHN, observaciones de CORPAC y del SENAMHI (vía la red de la OMM), caudales del Proyecto Especial Chira-Piura y pronósticos de Open-Meteo (ECMWF, GFS, ICON y GloFAS). Pronósticos y caudales de modelo son orientativos; las alertas oficiales las dan el SENAMHI, el INDECI y los COER.
 
 ---
