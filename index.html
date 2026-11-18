@@ -30,52 +30,258 @@
 <meta name="twitter:description" content="Pronóstico, lluvia, ríos y mar de Piura y La Libertad, con datos que se actualizan cada día. Elaboración: Raúl Edwin Zavala Sánchez, investigador RENACYT.">
 <meta name="twitter:image" content="https://rezavalas.github.io/elninopiura/vista.jpg">
 <style>
-html,body{margin:0;height:100%}
-body{background:#0B2545;color:#fff;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center}
-.ar{padding:24px;max-width:22rem}
-.ar svg{width:96px;height:108px;animation:flota 2.6s ease-in-out infinite;filter:drop-shadow(0 8px 14px rgba(0,0,0,.35))}
-h1{font-size:1.35rem;margin:14px 0 6px}
-p{margin:0;color:#BFD4F2;font-size:.95rem;line-height:1.45}
-.bar{width:160px;height:4px;border-radius:4px;background:rgba(255,255,255,.15);margin:18px auto 0;overflow:hidden}
-.bar i{display:block;width:40%;height:100%;background:#F59E0B;border-radius:4px;animation:va 1.2s ease-in-out infinite}
-.ar small{display:block;margin-top:22px;color:#8FA8C8;font-size:.76rem}
-button{margin-top:16px;font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 18px;background:#F59E0B;color:#0B2545;cursor:pointer}
-[hidden]{display:none}
-@keyframes flota{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-@keyframes va{0%{transform:translateX(-110%)}100%{transform:translateX(260%)}}
-@media (prefers-reduced-motion:reduce){.ar svg,.bar i{animation:none}}
+/* Pantalla de carga (18 nov. 2026): el mapa del norte del Perú con el radar girando sobre Piura, y Gotita */
+html,body{margin:0;height:100%;background:#0E0F4A;overflow:hidden}
+body{color:#fff;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.ld{position:fixed;inset:0;isolation:isolate;transition:opacity .35s,transform .35s}
+.ld.listo{opacity:0;transform:scale(1.02)}
+.tb-mapa{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:-3}
+.tb-tinte{position:absolute;inset:0;z-index:-3;pointer-events:none;overflow:hidden}
+.tb-barrido{position:absolute;z-index:-2;pointer-events:none;border-radius:50%;display:none;
+ background:conic-gradient(from 0deg,rgba(163,230,53,0) 0deg 285deg,rgba(163,230,53,.05) 300deg,rgba(163,230,53,.5) 359deg,rgba(236,252,203,.95) 359.4deg 360deg)}
+.tb-radar-on .tb-barrido{display:block;animation:tbmGira 7s linear infinite}
+@keyframes tbmGira{to{transform:rotate(360deg)}}
+.ld-velo{position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,rgba(14,8,52,.15),rgba(14,8,52,0) 40%,rgba(10,6,46,.55) 100%)}
+.tbm-grat { fill: none; stroke: #7DD3FC; stroke-opacity: .1; stroke-width: 1; }
+.tbm-curva { fill: none; stroke: #22D3EE; stroke-width: 1; }
+.tbm-c0 { stroke-opacity: .5; }
+.tbm-c1 { stroke-opacity: .34; stroke-dasharray: 7 5; }
+.tbm-c2 { stroke-opacity: .24; stroke-dasharray: 3 6; }
+.tbm-c3 { stroke-opacity: .17; stroke-dasharray: 2 7; }
+.tbm-c4 { stroke-opacity: .11; }
+.tbm-tierra { fill: url(#tbm-tierra); stroke: none; }
+.tbm-piura { fill: #EC4899; fill-opacity: .2; stroke: #F472B6; stroke-opacity: .85; stroke-width: 1.5; stroke-linejoin: round; }
+.tbm-rio { fill: none; stroke: #38BDF8; stroke-opacity: .5; stroke-width: 1.1; stroke-linecap: round; }
+.tbm-dep { fill: none; stroke: #C4B5FD; stroke-opacity: .32; stroke-width: .9; stroke-dasharray: 4 3; }
+.tbm-front { fill: none; stroke: #FDE68A; stroke-opacity: .6; stroke-width: 1.2; stroke-dasharray: 7 3 1.5 3; }
+.tbm-costa-g { fill: none; stroke: #22D3EE; stroke-opacity: .28; stroke-width: 7; stroke-linejoin: round; }
+.tbm-costa { fill: none; stroke: #67E8F9; stroke-width: 1.5; stroke-linejoin: round; }
+.tb-mapa text { font-family: inherit; }
+.tbm-pais { fill: #E0E7FF; fill-opacity: .34; font-size: 15px; font-weight: 800; letter-spacing: .35em; }
+.tbm-oceano { fill: #A5F3FC; fill-opacity: .34; font-size: 13px; font-weight: 700; font-style: italic; letter-spacing: .4em; }
+.tbm-reg { fill: #F9A8D4; fill-opacity: .6; font-size: 11px; font-weight: 800; letter-spacing: .3em; }
+.tbm-ciu { fill: #E0E7FF; fill-opacity: .7; }
+.tbm-ciu-t { fill: #E0E7FF; fill-opacity: .6; font-size: 10px; font-weight: 600; }
+.tbm-halo { fill: url(#tbm-halo); }
+.tbm-anillo { fill: none; stroke: #A3E635; stroke-opacity: .32; stroke-width: 1; }
+.tbm-anillo.tbm-ext { stroke-opacity: .6; stroke-width: 1.5; }
+.tbm-km { fill: #D9F99D; fill-opacity: .7; font-size: 9px; font-weight: 700; }
+.tbm-eje { stroke: #A3E635; stroke-opacity: .17; stroke-width: 1; }
+.tbm-tic { stroke: #A3E635; stroke-opacity: .55; stroke-width: 1.1; }
+.tbm-rumbo { fill: #D9F99D; fill-opacity: .8; font-size: 11px; font-weight: 800; }
+.tbm-centro { fill: #ECFCCB; }
+.tbm-eco { fill: #FBBF24; opacity: .45; transform-box: fill-box; transform-origin: center; }
+.tbm-pulso { fill: none; stroke: #F472B6; stroke-width: 2; opacity: 0; transform-box: fill-box; transform-origin: center; }
+.tbm-est-t { fill: #FEF3C7; fill-opacity: .82; font-size: 10px; font-weight: 700; }
+.tb-radar-on .tbm-eco { animation: tbmEco 7s linear infinite; }
+.tbm-est.tbm-sel .tbm-eco { fill: #F472B6; }
+.tbm-est.tbm-sel .tbm-est-t { fill: #FBCFE8; fill-opacity: 1; font-size: 11.5px; }
+.tb-radar-on .tbm-est.tbm-sel .tbm-pulso { animation: tbmPulso 1.8s ease-out infinite; }
+@keyframes tbmEco { 0% { opacity: 1; transform: scale(1.7); } 10% { opacity: 1; transform: scale(1.25); } 55% { opacity: .5; transform: scale(1); } 100% { opacity: .45; transform: scale(1); } }
+@keyframes tbmPulso { 0% { opacity: .95; transform: scale(.45); } 100% { opacity: 0; transform: scale(2.3); } }
+.tb-quieto .tb-barrido, .tb-quieto .tbm-eco, .tb-quieto .tbm-pulso { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .tb-radar-on .tb-barrido, .tb-radar-on .tbm-eco, .tb-radar-on .tbm-est.tbm-sel .tbm-pulso { animation: none; }
+  .tb-radar-on .tb-barrido { transform: rotate(-40deg); }
+  .tbm-eco { opacity: .9; }
+}
+.tb-tinte::before, .tb-tinte::after { content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity 1.5s; }
+[data-hora=dia] .tb-tinte { background: radial-gradient(circle at 92% -8%, rgba(254, 240, 138, .42), rgba(254, 240, 138, 0) 38%), linear-gradient(180deg, rgba(56, 189, 248, .14), rgba(56, 189, 248, 0) 60%); }
+[data-hora=alba] .tb-tinte { background: radial-gradient(ellipse at 96% 4%, rgba(253, 186, 116, .72), rgba(251, 113, 133, .26) 30%, rgba(251, 113, 133, 0) 58%), linear-gradient(180deg, rgba(249, 115, 22, .3), rgba(236, 72, 153, .14) 45%, rgba(0, 0, 0, 0) 80%); }
+[data-hora=tarde] .tb-tinte { background: radial-gradient(ellipse at 2% 12%, rgba(251, 146, 60, .72), rgba(244, 63, 94, .3) 32%, rgba(244, 63, 94, 0) 60%), linear-gradient(180deg, rgba(234, 88, 12, .3), rgba(147, 51, 234, .18) 50%, rgba(0, 0, 0, 0) 85%); }
+[data-hora=noche] .tb-tinte { background: linear-gradient(180deg, rgba(2, 6, 23, .64), rgba(3, 7, 30, .42) 55%, rgba(2, 6, 23, .56)); }
+/* noche: luna creciente y estrellas que titilan */
+[data-hora=noche] .tb-tinte::before { opacity: 1; inset: 14px 33% auto auto; width: 22px; height: 22px; border-radius: 50%; box-shadow: inset -6px 3px 0 #FDF6D8, 0 0 26px 6px rgba(253, 246, 216, .14); }
+[data-hora=noche] .tb-tinte::after { opacity: 1; background-size: 230px 150px; animation: tbTitila 4s ease-in-out infinite alternate;
+  background-image: radial-gradient(1.3px 1.3px at 12px 18px, #fff 98%, transparent), radial-gradient(1px 1px at 58px 64px, #E0E7FF 98%, transparent), radial-gradient(1.6px 1.6px at 104px 26px, #FEF9C3 98%, transparent), radial-gradient(1px 1px at 150px 92px, #fff 98%, transparent), radial-gradient(1.2px 1.2px at 196px 40px, #C7D2FE 98%, transparent), radial-gradient(1px 1px at 34px 118px, #fff 98%, transparent), radial-gradient(1.4px 1.4px at 128px 136px, #fff 98%, transparent), radial-gradient(1px 1px at 214px 122px, #E0E7FF 98%, transparent); }
+@keyframes tbTitila { from { opacity: .45; } to { opacity: 1; } }
+.ld-caja{position:absolute;left:50%;bottom:max(26px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(360px,calc(100vw - 32px));box-sizing:border-box;
+ padding:18px 20px 16px;border-radius:22px;text-align:center;background:linear-gradient(155deg,rgba(255,255,255,.16),rgba(255,255,255,.03) 65%),rgba(16,14,72,.42);
+ -webkit-backdrop-filter:blur(8px) saturate(150%);backdrop-filter:blur(8px) saturate(150%);box-shadow:0 18px 40px rgba(5,3,30,.45),inset 0 1px 0 rgba(255,255,255,.16)}
+.ld-caja::after{content:"";position:absolute;inset:0;padding:1.2px;border-radius:inherit;pointer-events:none;background:linear-gradient(135deg,rgba(34,211,238,.9),rgba(167,139,250,.55) 45%,rgba(244,114,182,.9));
+ -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.ld-gota{width:104px;height:117px;margin:-74px auto 4px;filter:drop-shadow(0 10px 16px rgba(0,0,0,.4))}
+.ld-gota svg{width:100%;height:100%;display:block}
+.ld-k{margin:0;font-size:.68rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#A5F3FC}
+h1{margin:4px 0 2px;font-size:1.55rem;line-height:1.15;font-weight:850;letter-spacing:-.01em;text-shadow:0 2px 12px rgba(5,3,30,.5)}
+.ld-sub{margin:0;color:#C7D2FE;font-size:.84rem}
+.ld-est{margin:14px 0 8px;min-height:1.3em;font-size:.92rem;color:#E0E7FF;font-weight:600}
+.ld-fila{display:flex;align-items:center;gap:10px}
+.ld-bar{flex:1;height:7px;border-radius:7px;background:rgba(255,255,255,.14);overflow:hidden}
+.ld-bar i{display:block;height:100%;width:0;border-radius:7px;background:linear-gradient(90deg,#22D3EE,#A78BFA 55%,#F472B6);box-shadow:0 0 12px rgba(167,139,250,.7);transition:width .35s ease-out}
+.ld-pct{width:3.2em;text-align:right;font-variant-numeric:tabular-nums;font-size:.8rem;font-weight:800;color:#FDE68A}
+.ld-autor{margin:16px 0 0;padding-top:12px;border-top:1px solid rgba(165,243,252,.2);font-size:.7rem;line-height:1.45;color:#C7D2FE}
+.ld-autor span{display:block;font-size:.6rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#A5F3FC}
+.ld-autor b{display:block;font-size:.95rem;font-weight:850;background:linear-gradient(90deg,#A5F3FC,#F9A8D4 55%,#FDE68A);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.ld-pie{position:absolute;left:0;right:0;top:max(12px,env(safe-area-inset-top));margin:0;text-align:center;font-size:.66rem;letter-spacing:.06em;color:rgba(224,231,255,.62)}
+.ld-pie b{color:#D9F99D;font-weight:800}
+.ld-pie i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#A3E635;margin-right:6px;vertical-align:1px;box-shadow:0 0 0 0 rgba(163,230,53,.7);animation:ldPunto 1.6s ease-out infinite}
+@keyframes ldPunto{to{box-shadow:0 0 0 8px rgba(163,230,53,0)}}
+button{margin-top:14px;font:inherit;font-weight:800;border:0;border-radius:10px;padding:10px 18px;background:#F59E0B;color:#0B2545;cursor:pointer}
+[hidden]{display:none!important}
+[data-hora=noche] .tb-tinte::before{top:54px;right:14%}
+@media (max-width:759px){.ld-pie span{display:none}}
+@media (min-width:760px){.ld-caja{left:7%;bottom:auto;top:50%;transform:translateY(-44%);width:360px}.ld-gota{width:124px;height:140px;margin-top:-92px}h1{font-size:1.8rem}}
+@media (prefers-reduced-motion:reduce){.tb-radar-on .tb-barrido,.tbm-eco,.ld-pie i{animation:none}}
+/* Gotita animada (18 nov. 2026): respira, parpadea, mira, saluda, salta, guiña; se viste según la hora y el tiempo */
+.gx{overflow:visible}
+.gx-sombra{fill:#0B2545;opacity:.2;transform-origin:32px 70px;animation:gxSom 3.4s ease-in-out infinite}
+.gx-todo{animation:gxFlota 3.4s ease-in-out infinite}
+.gx-cu{transform-origin:32px 66px;animation:gxResp 3.4s ease-in-out infinite}
+.gx-gota{fill:url(#gxG);stroke:#1D4ED8;stroke-width:1.1}
+.gx-brillo{fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;opacity:.6}
+.gx-br{fill:none;stroke:#2563EB;stroke-width:4;stroke-linecap:round}
+.gx-ma{fill:#3B82F6;stroke:#1D4ED8;stroke-width:.8}
+.gx-pies path{fill:url(#gxB);stroke:#B45309;stroke-width:.7}
+.gx-bl{fill:#fff}.gx-iris{fill:#1E40AF}.gx-ni{fill:#0B1026}
+.gx-pe{fill:none;stroke:#0B1026;stroke-width:1.1;stroke-linecap:round}
+.gx-pa{fill:#4C8DF6;opacity:0;transition:opacity .4s}
+.gx-cejas path{fill:none;stroke:#1E3A8A;stroke-width:1.5;stroke-linecap:round}
+.gx-cejas{transition:transform .3s}
+.gx-mej{fill:#F9A8D4;opacity:.8}
+.gx-boca{fill:none;stroke:#0B2545;stroke-width:1.8;stroke-linecap:round}
+.gx-bocaA{fill:#9F1239;stroke:#0B2545;stroke-width:1;opacity:0;transform-origin:32px 52px}
+.gx-oi{transform-origin:25.5px 42.5px}.gx-od{transform-origin:38.5px 42.5px}
+.gx-ojos>g{animation:gxParpa 5.2s infinite}
+.gx-od{animation-delay:.02s}
+.gx-pu{translate:var(--gx-x,0) var(--gx-y,0);animation:gxMira 12s ease-in-out infinite}
+.gx-sigue .gx-pu{animation:none}
+.gx-bi{transform-origin:15.5px 51px;transition:transform .5s}
+.gx-bd{transform-origin:48.5px 51px;transition:transform .5s}
+.gx-somb,.gx-gorro,.gx-capu{transform-origin:32px 19px}
+.gx-gafas rect{fill:#0F172A;stroke:#0B1026;stroke-width:.6}.gx-gafas>path:first-child{stroke:#0B1026;stroke-width:1.2}
+.gx-gb{stroke:#fff;stroke-width:.8;stroke-linecap:round;opacity:.7}
+.gx-zz text{fill:#E0E7FF;font:800 7px system-ui,sans-serif;opacity:0}
+.gx-sudor{fill:#BAE6FD;opacity:0}
+.gx-gorro,.gx-gafas,.gx-parag,.gx-zz,.gx-capu{display:none}
+/* noche: gorro de dormir, sueño y bostezos */
+[data-hora=noche] .gx-somb{display:none}[data-hora=noche] .gx-gorro,[data-hora=noche] .gx-zz{display:inline}
+[data-hora=noche] .gx-pa{opacity:.85}
+[data-hora=noche] .gx-zz text{animation:gxZz 3.6s ease-in infinite}
+[data-hora=noche] .gx-zz text:nth-child(2){animation-delay:1.2s}[data-hora=noche] .gx-zz text:nth-child(3){animation-delay:2.4s}
+/* calor de día: lentes de sol y una gota de sudor */
+[data-calor] .gx-gafas{display:inline}[data-calor] .gx-sudor{animation:gxSudor 4.5s ease-in infinite}
+/* lluvia y tormenta: sombrero de lluvia y paraguas */
+[data-tiempo=llovizna] .gx-somb,[data-tiempo=lluvia] .gx-somb,[data-tiempo=fuerte] .gx-somb,[data-tiempo=tormenta] .gx-somb,
+[data-tiempo=llovizna] .gx-gorro,[data-tiempo=lluvia] .gx-gorro,[data-tiempo=fuerte] .gx-gorro,[data-tiempo=tormenta] .gx-gorro,
+[data-tiempo] .gx-gafas,[data-tiempo] .gx-zz{display:none}
+[data-tiempo=llovizna] .gx-capu,
+[data-tiempo=lluvia] .gx-parag,[data-tiempo=fuerte] .gx-parag,[data-tiempo=tormenta] .gx-parag{display:inline}
+[data-tiempo=lluvia] .gx-bi,[data-tiempo=fuerte] .gx-bi,[data-tiempo=tormenta] .gx-bi{transform:rotate(96deg)}
+[data-tiempo=lluvia] .gx-pa,[data-tiempo=fuerte] .gx-pa,[data-tiempo=tormenta] .gx-pa{opacity:0}
+[data-tiempo=tormenta] .gx-cejas{transform:translateY(-1px) rotate(-3deg)}
+/* acciones (las elige el programa cada pocos segundos) */
+.gx-a-saluda .gx-bd,.tb-g-saluda .gx-bd{animation:gxSaluda .42s ease-in-out 5 alternate}
+.gx-a-saluda .gx-cejas{transform:translateY(-1.2px)}.gx-a-saluda .gx-bocaA{opacity:1}.gx-a-saluda .gx-boca{opacity:0}
+.gx-a-salta .gx-todo{animation:gxSalta .9s ease-in-out}.gx-a-salta .gx-cu{animation:gxAplasta .9s ease-in-out}
+.gx-a-guina .gx-od{animation:gxGuina .7s ease-in-out}.gx-a-guina .gx-boca{transform:translateX(.6px) rotate(-6deg);transform-origin:32px 52px}
+.gx-a-somb .gx-somb,.gx-a-somb .gx-gorro,.gx-a-somb .gx-capu{animation:gxSomb 1.5s ease-in-out}.gx-a-somb .gx-bd{animation:gxLevanta 1.5s ease-in-out}
+.gx-a-baila .gx-cu{animation:gxBaila 2.4s ease-in-out}.gx-a-baila .gx-bi{animation:gxBrazoI .6s ease-in-out 4 alternate}.gx-a-baila .gx-bd{animation:gxSaluda .6s ease-in-out 4 alternate}.gx-a-baila .gx-bocaA{opacity:1}.gx-a-baila .gx-boca{opacity:0}
+.gx-a-bosteza .gx-bocaA{animation:gxBosteza 2.6s ease-in-out}.gx-a-bosteza .gx-boca{opacity:0}.gx-a-bosteza .gx-ojos>g{animation:gxCierra 2.6s ease-in-out}.gx-a-bosteza .gx-bd{animation:gxTapa 2.6s ease-in-out}
+.gx-a-susto .gx-todo{animation:gxSusto .9s ease-out}.gx-a-susto .gx-ojos>g{animation:gxAbre .9s ease-out}.gx-a-susto .gx-cejas{transform:translateY(-2px)}.gx-a-susto .gx-bocaA{opacity:1;transform:scale(.8,1.1)}.gx-a-susto .gx-boca{opacity:0}
+.gx-habla .gx-bocaA{animation:gxHabla .34s steps(2) infinite}.gx-habla .gx-boca{opacity:0}
+@keyframes gxFlota{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.6px)}}
+@keyframes gxSom{0%,100%{transform:scale(1);opacity:.2}50%{transform:scale(.86);opacity:.13}}
+@keyframes gxResp{0%,100%{transform:scale(1,1)}50%{transform:scale(1.025,.975)}}
+@keyframes gxParpa{0%,91%,97%,100%{transform:scaleY(1)}94%{transform:scaleY(.08)}}
+@keyframes gxMira{0%,22%,100%{transform:translate(0,0)}28%,40%{transform:translate(-1.3px,.2px)}48%,60%{transform:translate(1.3px,-.3px)}68%,80%{transform:translate(.3px,-.9px)}}
+@keyframes gxSaluda{from{transform:rotate(8deg)}to{transform:rotate(-34deg)}}
+@keyframes gxBrazoI{from{transform:rotate(-10deg)}to{transform:rotate(40deg)}}
+@keyframes gxSalta{0%,100%{transform:translateY(0)}20%{transform:translateY(1px)}50%{transform:translateY(-10px)}75%{transform:translateY(0)}}
+@keyframes gxAplasta{0%,100%{transform:scale(1,1)}18%{transform:scale(1.1,.88)}45%{transform:scale(.94,1.08)}78%{transform:scale(1.08,.92)}}
+@keyframes gxGuina{0%,100%{transform:scaleY(1)}30%,70%{transform:scaleY(.08)}}
+@keyframes gxSomb{0%,100%{transform:translate(0,0) rotate(0)}35%,65%{transform:translate(4px,-6px) rotate(14deg)}}
+@keyframes gxLevanta{0%,100%{transform:rotate(0)}35%,65%{transform:rotate(-58deg)}}
+@keyframes gxBaila{0%,100%{transform:rotate(0)}25%{transform:rotate(-7deg)}50%{transform:rotate(0) scale(1.03,.97)}75%{transform:rotate(7deg)}}
+@keyframes gxBosteza{0%,100%{opacity:0;transform:scale(1)}20%,70%{opacity:1;transform:scale(1.25,1.6)}}
+@keyframes gxCierra{0%,100%{transform:scaleY(1)}20%,72%{transform:scaleY(.1)}}
+@keyframes gxTapa{0%,100%{transform:rotate(0)}22%,70%{transform:rotate(-112deg)}}
+@keyframes gxSusto{0%{transform:translateY(0)}25%{transform:translateY(-8px)}55%{transform:translateY(0) translateX(-1px)}65%{transform:translateX(1px)}75%{transform:translateX(-1px)}100%{transform:none}}
+@keyframes gxAbre{0%,100%{transform:scale(1)}20%,70%{transform:scale(1.22)}}
+@keyframes gxHabla{0%{opacity:1;transform:scale(1,.7)}100%{opacity:1;transform:scale(1,1.1)}}
+@keyframes gxZz{0%{opacity:0;transform:translate(0,0)}25%{opacity:.9}100%{opacity:0;transform:translate(4px,-8px)}}
+@keyframes gxSudor{0%,60%{opacity:0;transform:translateY(0)}70%{opacity:.9}100%{opacity:0;transform:translateY(7px)}}
+@media (prefers-reduced-motion:reduce){.gx *,.gx{animation:none!important;transition:none!important}}
+
 </style>
 </head>
 <body>
-<main class="ar" id="arranque">
-  <svg viewBox="0 0 64 72" role="img" aria-label="Gotita, la guía del tablero">
-        <defs><linearGradient id="tbg-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7DD3FC"/><stop offset="1" stop-color="#2563EB"/></linearGradient></defs>
-        <ellipse cx="32" cy="69" rx="13" ry="2.2" fill="#0B2545" opacity=".16"/>
-        <g >
-          <path d="M15 53q-5 2-7.5 6.5" fill="none" stroke="#2563EB" stroke-width="4" stroke-linecap="round"/>
-          <path d="M32 9C30 15 13 33 13 47a19 19 0 0 0 38 0C51 33 34 15 32 9z" fill="url(#tbg-grad)" stroke="#1D4ED8" stroke-width="1.2"/>
-          <path d="M19.5 46c0-6 2.5-11 6.5-15.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" opacity=".55"/>
-          <g >
-            <ellipse cx="25.5" cy="42.5" rx="4.3" ry="5.2" fill="#fff"/><ellipse cx="38.5" cy="42.5" rx="4.3" ry="5.2" fill="#fff"/>
-            <circle cx="26.3" cy="43.4" r="2.4" fill="#0B2545"/><circle cx="39.3" cy="43.4" r="2.4" fill="#0B2545"/>
-            <circle cx="27.1" cy="42.3" r=".85" fill="#fff"/><circle cx="40.1" cy="42.3" r=".85" fill="#fff"/>
-          </g>
-          <ellipse cx="21" cy="50" rx="3" ry="1.8" fill="#F9A8D4" opacity=".75"/><ellipse cx="43" cy="50" rx="3" ry="1.8" fill="#F9A8D4" opacity=".75"/>
-          <path d="M28.2 51.2q3.8 4 7.6 0" fill="none" stroke="#0B2545" stroke-width="1.8" stroke-linecap="round"/>
-          <g ><path d="M50 51q6-2.5 9-9" fill="none" stroke="#2563EB" stroke-width="4" stroke-linecap="round"/><circle cx="59.2" cy="41.6" r="3" fill="#3B82F6" stroke="#1D4ED8" stroke-width=".8"/></g>
-          <path d="M23 18.5Q23 7.5 32 7.5T41 18.5z" fill="#E8C26A" stroke="#B8892E" stroke-width=".8"/>
-          <path d="M26 11.5q6-2 12 0M24.6 14.6q7.4-2.2 14.8 0" fill="none" stroke="#C99A3B" stroke-width=".7" opacity=".8"/>
-          <rect x="23.2" y="15.6" width="17.6" height="2.9" fill="#9A3412"/>
-          <ellipse cx="32" cy="19" rx="17.5" ry="4.2" fill="#F2D58A" stroke="#B8892E" stroke-width=".8"/>
-        </g>
-      </svg>
-  <h1>Tablero El Niño Piura</h1>
-  <p id="estado">Cargando los datos de hoy…</p>
-  <div class="bar" id="barra"><i></i></div>
-  <button type="button" id="otra" hidden>Intentar de nuevo</button>
-  <small>Elaboración: Raúl Edwin Zavala Sánchez · Investigador RENACYT (CONCYTEC)</small>
-  <noscript><p>Para ver el tablero, activa JavaScript en tu navegador.</p></noscript>
+<div class="ld" id="arranque">
+<svg class="tb-mapa" id="tb-mapa" viewBox="272.7 509 1180 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false" data-c="932.7 719" data-r="236.8"><defs><radialGradient id="tbm-mar" gradientUnits="userSpaceOnUse" cx="892.7" cy="719" r="900"><stop offset="0" stop-color="#18A6E0"/><stop offset=".3" stop-color="#1663C9"/><stop offset=".62" stop-color="#2B2EA0"/><stop offset="1" stop-color="#3B1C86"/></radialGradient><linearGradient id="tbm-tierra" gradientUnits="userSpaceOnUse" x1="812.7" y1="0" x2="1632.7" y2="0"><stop offset="0" stop-color="#1C1A52"/><stop offset=".5" stop-color="#161340"/><stop offset="1" stop-color="#110C33"/></linearGradient><radialGradient id="tbm-halo" gradientUnits="userSpaceOnUse" cx="932.7" cy="719" r="260"><stop offset="0" stop-color="#A3E635" stop-opacity=".16"/><stop offset=".7" stop-color="#22D3EE" stop-opacity=".05"/><stop offset="1" stop-color="#22D3EE" stop-opacity="0"/></radialGradient><path id="tbm-cont" d="M910.5 837.5l1.3 10-2.4 .1-1.1-4.3 2.2-5.8zM1005.1 471.7l-9.2 8.1-13.5 22.3-7.3 1.3-6.2-1.6 .4-17.7 5.1-11.6 15-6.2 4.6 .1 11.1 5.3zM1012.4 459.2l-.4 4.4-4.4 1.4-.4-2.3 6.1-14.1 4.7 5.6-5.6 5zM38.5 339.2l-6.3 .6-8-3.7 2-2.1 10.2 .9 2.1 4.3zM74.2 271.9l-4.7 7.7-6.5 3.4-6.7 9.9-11 2.8-8.5-3.1 2.6-4.3 5.3-2.9 1-3.5 6.3-2.2 6.4-8.4 4.7-2.3 10.8-.8 .3 3.7zM1105 72.9l-1.4 2.6-2.3-1.2-2.1 2.1-3.8-5.1 9.3-8.7 .3 10.3zM1128.1 0l2.6 0-.7 1.9-1 .6-.9-2.5zM1275.9 1411.6l-5.4-2.3-1.7-3 2.1 .2 5 5.1zM1990.8 1500l-646.9 0-1.8-5.4 .1-7.6-11.4-11.9-5.1-9.6 0-3.6-12.9-13.6 2.9-6.4-.9-3.8-6.2-7.8-18.4-9.9-1.6-9-3.4-2.5-8.6-1.7 3-4.9-.1-9.1-5-15.5 2.9-2-.4-2.1-4-9-5.3-4.2-2-2.9 .3-2.6-7.9-8.8-28.5-16.9-.1-7 5-1.5 .3-4.2-6.6-15.1 1.4-1.8-2.3-6.8-3.9-7.6-4.4-3.6-1-5.4-8.4-8.8-7.4-14.3-4.6-3.7-4.2-8.1 .4-3.1-4.9-3.4-.2-4.6-2.7-2.5-2-7.6-7.7-9 1.5-1.8-1-5-5.8-9.6 .6-4.6-1.3-4.2 1.3-6.5-7.1-7.2-6.8-10.7 .1-5.8-1.8-1-1.9-6.9 2-2.7-4.1-3.1-.2-4.4 1.4-1.4-3.4-3.4-3.5 .2-4.3-6 3.7-3.7-.7-4.3-3.8-1.7-2.3 1.1 .5 6-5.8-6.7 .2-2.1 3.9 1.2 1.1-4-3.3-5.1-4-.5-.9-1.6 1.3-4.3-3.3-1.7 1.3-1.5-.6-4.8-10.9-15.8 2.3-6.4-1.8-10.3-6-8-12-9.2 3.3-1.8 .5-4.1-6.1-9-2.2-7-13.8-12.7-.1-2.5-17.4-12.6-8.4-10.5-1.2-4.2-6.9-7.6 2.9-2.2 .1-2-14.6-21-.7-5.3 1.5-2.4-2.2-7.5-1.7-4.6-8.3-8.8 .7-4.7-24.1-24.8-1.7-6.3-3.9-6.2-13-10.7-17.9-10.7-49-24.4-6.2-6.1-24.7-16.7-3-3.7-2-5.9 .1-9.3 3.1-4.3 2.3-.1 2.1-5.2 1.7 .1 1.9 3 9.8 3.3 7.6-10.7 .8-9.4-7.6-18.6-13.9-14.5-5.9-1.9-6.7-9.2 3.2-4.4-1.1-2.1 1.5-1.7 0-5.3 3.3-.8 1.7 1.7 2.9-.3 2-5.7-2.2-4.8-6.4-5.7-7.4-11.1-11.3-12.8 3.2-3.4-1.1-4.3 .8-6.7-2.1-5.7 4.9-8.1-.9-9.8 3.6-5.9 8.7-6 5.5-7.1 4.7-2.2 10.1-14.7 9.3-6.6 1.6-6.5 4.4-6.9 19.4-12.3 7.6-11.1 15.1-2.6 7.8-15.8-.8 5.5 2.8-5.5 2.7 2.7 11.3-1.7 3.7-3.4 4.8-9.3 2.3 .4-.3 7.2 7.2-6.5 9.3-21-.7-4 4.7-15.8 10.9-23.7-2.3-8.5-4.2-.4-4.9-10.4-.1-16.7-2.8-4.9 .6-5.3 4.4-2.8 5.2-7.5-6.5 3.9-.3 2.6-4 .5-1.7 4.1-1 6.9 3.8 11.2-1.5 19.5-1.8 5.1-3.7 3.7-6.4 2.8-6.5-3.1-.6-1.6 4.3-3.6 2.4-4.5 2.7-.3 3.1 2.1 1.4-1.4-.7-2.1-.4 2.1-3.7-2.7-5.6 1.7 2.5-11.5 3.1-1.2 2.8-4-6.3 1.9-6.3 13.2-9.8 12.9-5.7 4.2-3.8-2.4-.9 .8 0 3.6 3.4 3.9-1 4.2-6.5-1.9-7.6-6.2-7.1-3.1-18.8-20.2-14.6-4.1-6-4.6-5.7-1.9-1.4-4.9-7.7-9.4 6.3 1.9 1.8 3.1 2.5-.1 12.5-7.3 3.5-4 .8-6-2.5-6.9 2.9-2 .3-2.5-5.2-19.2-7.3-14.9 3.9-3.6-.4-5.2 5-2.2 .6-8.7 2.2-2.3-.2-2.4-8.9-11.3-8.2-16.5 8.9-11.5 10.4-2 3.1 1.9 3.8-2.7 3.6 1.8 4.7-2.9 2.2-2.4 5-19.6 4.8-8.6 2.7-.6 1.6 4.6 2.7 1.2 7.9 .4 0-1.2-9.2-2.5-4.5-6.7-1.5-8.1-4.4-9.6 6.3-4.2 6.1-11.6 2.2-.8 2.6-4.2 1.8 1.6 7.3-4.9 12.4-14.7 .9-3.2 3.2-1.3 1.5-3.8 1.4-8.6-1.1-14.2 1.2-3.9 3.1 3.2 1.4-4-5.2-9.4 0-4.2 2.6-5.8-1.9-6.6-5.4-2.7-1.8-4.3 0-4.3 3.2-7.8 3-2.4 6.5 .8 11.8-4.4 9.6-7.9 11-4.9-1.5 8.2 5.5 7.7-3.3-6.2 1.6-7.9 1.7-1 4.3 1.2 13.6-9.4 7 .6 9.2-2.1 2.4 1.3 8.2-2 10.8-11.8 4.4 2.5 2.2 7.3 1.9-1 1.8-7.7 2.5-3.6 2.7 .7 3-5.3 5.9 1.2-6.9-4.2 4.9-6.2 .4-5.3 1.6-.8-4.2-4.8-.6-6.8-3.9 1.3-9.8-6.3-2.3-3 .5-1.7 6-3.7 11-13 8.6-.9 18.7 4.9 2.6-13.3-4.6 1.8 .5-10.3 854.7 0 0 1500z"/></defs><rect x="0" y="0" width="1990.8" height="1500" fill="url(#tbm-mar)"/><path class="tbm-grat" d="M0 0V1500M99.5 0V1500M199.1 0V1500M298.6 0V1500M398.2 0V1500M497.7 0V1500M597.2 0V1500M696.8 0V1500M796.3 0V1500M895.9 0V1500M995.4 0V1500M1094.9 0V1500M1194.5 0V1500M1294 0V1500M1393.6 0V1500M1493.1 0V1500M1592.6 0V1500M1692.2 0V1500M1791.7 0V1500M1891.3 0V1500M1990.8 0V1500M0 0H1990.8M0 100H1990.8M0 200H1990.8M0 300H1990.8M0 400H1990.8M0 500H1990.8M0 600H1990.8M0 700H1990.8M0 800H1990.8M0 900H1990.8M0 1000H1990.8M0 1100H1990.8M0 1200H1990.8M0 1300H1990.8M0 1400H1990.8M0 1500H1990.8"/><path class="tbm-curva tbm-c0" d="M846 675l0-32 10-29 21-19 27-35 19-13 8-10 14-6 13-15-7-12 0-20-30-27-27-11-17-25 4-16 9-6 12 1 2-11-12-28 9-24-13-23 0-15 14-18 24-6 7-21-3-23 44-48-1-36-6-16 5-22 12-10 18-4 21-12 47-10 16-18-10-14 3-18 20-19 10-4M1327 1500l-3-6-26-35-3-15-34-20-8-10-1-14 7-9-2-16-11-15-31-21-5-39-49-79-8-35-12-17-6-22-17-21-7-29-9-13 0-16-18-17-5-21-27-24-19-26-2-12-11-15-2-17-10-16-20-21-5-12-26-17-29-15-13 10-16-3-8-13 2-15-24-19-6-15 1-19 13-16 12-4-30-34 5-28-18-24M20 286l27-29 22-7 17 5 6 12-3 16-18 21-26 10-16-5-9-9 0-14M29 316l17 4 10 12-1 15-11 9-19 0-18-14 5-19 17-7"/><path class="tbm-curva tbm-c1" d="M821 686l3-67 11-22 52-58 38-30-1-10-17-17-37-21-19-34 4-31 15-17-4-16 4-24-10-25 2-23 24-32 17-8 2-31 20-28 21-16 0-21-6-28 9-32 25-21 76-26 0-25 8-17 7-6M1294 1500l-24-39-37-27-9-22 6-27-37-30-8-22-1-24-47-77-11-37-15-34-17-22-20-59-14-18-3-16-30-28-18-26-25-58-24-30-28-16-25 5-24-9-15-20-4-17-16-16-12-36 4-24 8-14-14-22 0-31-13-18M0 267l3-5 27-26 20-10 24-3 22 6 21 25 1 26-5 14-31 36 0 18-10 21-19 13-23 3-16-4-14-10"/><path class="tbm-curva tbm-c2" d="M779 682l5-70 13-30 67-76-25-20-21-32-6-19 1-39 13-28 2-25-8-42 4-22 9-19 30-33 6-24 10-16 25-31-4-25 3-27 12-29 23-26 73-32 8-17M1245 1500l-7-12-14-8-23-23-11-19-5-36-25-25-10-20-5-36-45-73-12-38-12-28-17-25-21-57-18-34-23-21-24-35-22-53-23-26-26 1-23-5-20-11-17-17-15-31-11-12-19-47 5-49-6-12-4-33-13-33M0 210l5-5 34-17 35-5 41 11 30 29 9 19 3 45-8 24-27 36-8 30-12 19-17 14-23 11-37 4-25-7"/><path class="tbm-curva tbm-c3" d="M725 691l4-80 12-42 21-33 27-27-21-34-10-29-3-32 5-32 12-31-7-54 7-35 14-30 27-33 6-18 27-40 4-51 18-44 36-40 13-6M1168 1500l-12-11-16-30-9-33-18-20-17-37-4-27-42-71-23-64-17-25-22-59-64-88-19-47-45-10-34-18-28-28-25-42-22-40-8-33 1-52-19-74M0 147l11-7 21-7 42-5 35 5 32 13 28 20 23 27 14 32 7 38-2 34-10 32-28 43-10 30-20 30-28 24-33 16-33 7-34 0-15-5"/><path class="tbm-curva tbm-c4" d="M655 645l9-65 16-43 23-38-13-38-4-48 6-49 7-18-3-53 10-52 20-46 26-34 25-46 7-48 25-57 9-10M1083 1500l-8-14-7-26-14-16-25-56-3-21-39-68-22-61-17-23-25-64-38-48-29-54-21-5-51-28-41-42-25-41-32-60-12-46 0-60-18-64-1-58M0 70l28-8 53-3 74 16 50 29 39 42 27 52 12 61-3 51-15 48-32 52-8 23-30 46-42 36-49 24-48 10-49-1-7-2"/><use class="tbm-tierra" href="#tbm-cont"/><path class="tbm-piura" d="M1070.5 700.1l-4.9 10.9-8.3 8.1 2.9 4.2-1 5.6 3.1 2.7 5.5 20.3-12.5 1.8 2.3 6.9-2.5 14.4 6.6 14.4-8.4 7.6-8-5.5-10.1 2.5-2.6-5.3-.5-5.8-5.1 1.7-5.5-.8 2-9.9-6.9-9.2-4.6-.2-3.1-8.2 1-3.1-4.9-4.1-4.2 2.4-4.9 23.7-13.5 13.7-6.8 .4-12.8 5.4-29.8 42.5-17-8.3-11.5-9.8-16.2-10-7.3-11 0-9.2 5.3-5 2.7-5.2 4.7 4.4 8.1 2 4.9-4.1 3-6 .8-11.5-4.4-12.4-6.1-8.8-9.4-9.2-5.5-1.6-3-5.1-5.6-5.2 6.1-14.2 5 .9 2-5.7-2.3-5.5-24.1-28.5 1.8-2 2.7-13.7-2.1-4.2 3.7-4.9 1.7-7.9-1.1-4.4 2.4-6 6.8-4.1 6.7-8.1 5.9-4.1 7 3.9 1.7 4.6 7.1 2 7.9-1.7 10.3 1.2 7.7 4.4 6.2-5.7 5.2-7.8 3.9 11.6 11.8-.3-14.1 20.3 2.2 3.3 8 4 9.9-5.1 9.5-8.9 1.6-4.2 4.9-.9 4.6 1.3 10.1 8.1 7.7 1 7.1 8 3.9 1.4 8.5-2.2 4.5-3.2 3.3 1.3 6.7 6.2 6.1 2.7-2.6 7.7 2.9 4.3 4.8 14.9 5.5 3.8 1.7 3.7 3.7 1.9 3.8 5.7 9.2 .4-3.5 3.6z"/><path class="tbm-rio" d="M1133 400l-1-12 3-10-5-3 4-11 8-7 3-15 11-4 13 1 11 7 7 17 6 3 10 1 8 24 8 4 4 7 33 13 26 16 10 17 6 5 13 0 10 5 7-1 3 5 1 10 18 13 4 8-5 11 2 7-1 5 3 5-2 5 7 4 2 11 7 13-4 4 1 4-11 6-3 7-1 11-4 7 2 2-2 6 2 10-3 1-3 6-6 5 1 5-6 10 7 19-2 6 10 13 5 10 0 6M1543 1094l-2-8-5-4 7-8M1543 1047l-2-10 1-10-10-4 3-8-7 1 3-11-5-2-1-6-7 3-3-1 3-4 6 0-1-2-7-6-5 4-4-4-1 7-6-7-4-1 3-7-6-4-4-11 8 2 0-4-7-9 6-12-10-7-10-10-9 1 2-6-7-3 5-2 4-7 9-2 1-5-6-6 5-10 5-2 2-3-3-11-6-6 7-2 1-2-3-3-8-1-3-6 1-4 7-4-3-19-4-3 10-10 0 4 3 2 2-10 5 0 7 5 6-5 1-5 2-1 4 2 4-5 6 7 2-3-1-8 7-8 4-1 2-7 5-4 1 1M1332 1191l-4-18-5-9-2-11-5-8 1-6 5-8 0-10-4-6-23-13-8-10-12-7-2-9-8-9-3-14-9-5-3-11-5-3-1-10-12-11-3-10 3-19-15-41-7-5-3-15-6-7-2-8-5-8-1-12-2-3 2-2 0-7-10-22-6-8-15-8-12-23-10-9-6 1-14-19 2-7 6-9 0-8 11-9 0-9 10-6 0-19 10-4-1-11-3-8 6-8 0-13 5 0 8-3 1-4-2-5 2-2 14 2 16-9 6-2 4-5 8-2 5-4 10 2 7-2 8 7-2 6 3 2-1 3 9 2-3 3 6 9 4-8 23 8 8 7 10-2 22 4 5-2 2 7 10 2 4 3 10 0 2-3 12 2 1 6 9 4 22-2 10 4 5-4 8 7 9-15 8-1 2-9 3-4 14-1 8 2 9-6 3 4 9-6 9 2-2-4 8-4 4-11 12-2 7-8 2 5 6 3M1192 300l2 4 8 4 9-1 7-5 12 2 5-1 3 2 6-5M1478 300l11 10 10 14 29 20 1 20-6 12 0 7 13 18 7 5M1071 635l-2-7-9-12-1-13-6-2-11 4-9 12-21 5-10-3-10 3-7 6-10 2-5 9-22 17-9 14-1 6-3 1-4 6-10 4-9-2-13 1-5 2-3-4-5 0-9 5M1322 949l5-4 2-4-7-14 0-11 11-9 16-5 4-6 7-4 4-18-2-7 2-6 13 1 10-8 12 2 5-11 8-2 5-3 2-5 3-1 1-4-6-3-3-6-3 0-10-8 4-10-11 0-7-4 2-4-2-5-5-2 2-5-8 1-2-4 3-4 9 2 4-2 0-6 6-5-2-3 5-5 1-8 4 0-1-2 8-9-4-6 10-3 2-10 3 0 6-6-5-2-1-4 10 0M1337 1250l8-4 30-35 1-4-3-3-2-10 1-6 7-5 23-10 9-8-4-8-7-5-5-32-15-16 2-23-4-4-7 0-3-3-1-11-10-24 0-8-5 0-4-8-8 1 0-11-15-15-4-7-3-20-4-11 7-10M1270 1203l-6 7-5-6-10-31-10-19 0-8-5-12-9-9-13-23-3-9 2-8-6-4-8-11-13-3-9 2-10-3-24 10-6 7-2 12-4 5"/><path class="tbm-dep" d="M1218 896l-12 0-4 3-7-2-6-29-5-4-3-11-12-14-8-4 0-3-18-25-7 1-12-25 2-12 17-26 0-5-9-9-8-4-2-9 1-8 8-10-3-4 5-19-5-3 1-8-7-4 5-4M1130 651l1-2M1131 641l-1-8 3-4 2-9M1140 608l0-1M1161 542l1-1M1178 539l0-2M1214 499l3 42 1 5 15 17 0 8-4 7 8 9 3 16-4 22 2 12-2 11-7 4-2 11-12 13 3 19-6 8 0 5 13 8-5 5 5 6 1 7-1 7-5 0-2 3 0 10 3 7-4 8 1 13 9 4 2 8-2 4 14 8 5-6 5 6 4-2 5 7 12 4 2 8 7 7-4 8-5 0-4-5-3 0 2 8-5 6-1 5-6 8-4 1 5 9-16-2-7-7-8 7-5-1-2 14 4 8-4 7M1262 1053l3 6 0 4 3 2 10 24 5 8 7 3 6 6 19 8 6 12-3 10-6-3-2-7-10 14-1 7 1 6-11 12 6 10 2-4 7 6 9 19 0 12-11 4 1 15-6 4-4-3-1 5-5 1-10 12-1 4M1223 1250l3-7 9-5-10-6-6 0-1 11-3 5 1 2M1132 1096l4-1 2-16 5-4 7-1 9-7 11-1 5-6-2-4 8-13 2-12 10-9 8-2 4-12 17-1 8-2 4 10 14 19 6 14 8 5M1063 903l2-3-1-10 19-12-2-8-7 0-2-3-7 1-7-13-3-1-5-14 3-9 7-1 10-7-2-8 5-9-4-6-16-3 9-8-7-14 3-14-3-7 13-2-6-20-3-3 1-6-3-4 9-8 6-12M1093 701l1-2M1098 690l7-2M1105 677l2-5M1120 663l4-1 7 4-1 8 5 3-5 19 3 4-8 10-1 8 2 9 8 4 9 9 0 5-17 26-2 12 12 25 7-1 18 25 0 3 8 4 12 14 3 11 5 4 6 29 16 34 2 8 7 8-10 4-3 8-12 9-9 2-3-5-11 11-5-1-3-5-2 0-6-7 3-6 0-7-6-1-7 6-14 0-2-2 2-8-3-4-10-1-13 8-7 18-3 0-5-6-3-13-8-3-4-4-16-6 7-6 1-9-3-4-2-12M1262 1053l6-6 6 2 7-5 8 11 13 2 7-2 2-3 13 1 16-2 7 6 5-13 8-1 1 9 5 6 5 22 6-4 5-10-1-19 4-13 10-2 4 8-3 24 5 14 5 24 20 38 11 0 7-2 4-8 17 1 7-8-3-12 9-7 1-7 10-7 6 5 5-2-1-7 9-10 0-10 23-11 7 3 2 17 0 3-8 4-7 27 4 3 5 18-14 17-2 5 1 5-7 12 1 4-14 3-6 8-6-2-5 3-5-1-8-5-6-1 3 7-2 2-8 0-10 10-8 1-4-3-1 7-7 3-3 16-14 5-1 4-7 6 0 5-5 7-8-1-2-4-5 0-10-6-4 0-4 4-3-12-14 5-1 4-16 4-8 7-4-3-4-7-5-1-5-11-1-15 11-4 0-12-9-19-7-6-2 4-6-10 11-12-1-6 1-7 10-14 2 7 6 3 3-10 0-5-6-7-19-8-6-6-7-3-5-8-10-24-3-2 0-4-3-6M1029 915l17-18 4-2 5 1 8 7 2 12 3 4-1 9-7 6 16 6 4 4 8 3 3 13 5 6 3 0 7-18 5-4 8-4 10 1 3 4-2 8 2 2 14 0 7-6 6 1 0 7-3 6 6 7 2 0 3 5 5 1 11-11 3 5 9-2 12-9 3-8 10-4-7-8-2-8-16-34 7 2 4-3 12 0 5 15 7 4 4 7-4 2 1 12 2 7 9 7-1 8 5 12-5 6 9 5 4 9 2 1-3 8 3 7 9 0 5-5 12 2 10 2 3 6 8 6-2 5 3 6-1 5-7 7-10 1-12 8-6-2-6 6-8-5-6-14-14-19-4-10-8 2-17 1-4 12-8 2-10 9-2 12-8 13 2 4-5 6-11 1-9 7-7 1-5 4-2 16-4 1M934 836l29-41 13-6 6 0 14-14 5-24 4-2 5 4-1 3 3 9 5 0 7 9-2 10 10-1 3 11 10-2 8 5 16 3 4 6-5 9 2 8-10 7-7 1-3 9 5 14 3 1 7 13 7-1 2 3 7 0 2 8-19 12 1 10-2 3-8-7-5-1-21 20M1303 1227l5 11 5 1 4 7 5 4M1216 1250l-1-2 3-5 1-11 6 0 10 6-9 5-3 7M1276 1250l1-4 10-12 5-1 1-5 4 3 6-4M1543 927l-4 2-10 21 0 6 7 11-2 3 7 8-5 4-6 12-10 4-4 6-13 4-8-11-5-2-11 3-4 4-3 11-3 3-5-3-14 4-7 12 0 6 7 4-1 5-10 3-6-6-4 0-6 3-1 5-6 0-1 6-5 10-6 1-5 6-3-8 3-24-4-8 5-1 2-6-3-15 10-4 2-9-3-5-11 4-8-17-6-7 1-16-7-7-5-9 2-7-2-2 5-4 2-7 9-4 4-8 0-8-4-6 5-5-5-8 9-2 12 1 8 5 7 2 3-4 3 1 12-5 0-30-4-14 6-8 1-7-4-3-5-17-4 2-2 6-5 2-3 4-10-4-2 4-10 0-3-4-7 0-9 8-10-1-5-7-4-1-6-12-3-2-14 7-20-2 0-5-7-9-2-11-5 0-11-8-4 0-19-7-11 0-3-3-9 1-10-15-2 3-11-5 0-14-5-6 5-5-13-8 0-5 6-8-3-19 12-13 2-11 7-4 2-11-2-12 3-14 1-17-3-7-8-9 4-7 0-8-15-17-1-5-3-42M1261 483l70-24 58-46 16-21M1450 310l3-10M1322 1250l2-6 21-6 1-4 14-5 3 12 4-4 4 0 10 6 5 0 2 4 8 1 5-7 0-5 7-6 1-4 14-5 3-16 7-3 1-7 4 3 8-1 10-10 8 0 2-2-3-7 6 1 8 5 5 1 5-3 6 2 6-8 14-3-1-4 7-12-1-5 2-5 5-4 9 7 1 7 8 2M1072 699l-6 12-9 8 3 4-1 6 3 3 6 20-13 2 3 7-3 14 7 14-9 8-8-5-10 2-3-11-10 1 2-10-7-9-5 0-3-9 1-3-5-4-4 2-5 24-14 14-6 0-13 6-29 41M868 653l-1-1M866 648l1-1M869 644l0-1M871 638l1-11M892 609l7 4 1 4 8 2 18 0 7 4 10-12M975 636l2-4M1395 1032l-10 2-4 13 1 19-5 10-6 4-5-22-5-6-1-9-8 1-5 13-7-6-16 2-13-1-2 3-7 2-13-2-8-11 5-3 10-1 7-7 1-5-3-6 2-5-8-6-3-6-10-2-12-2-5 5-9 0-3-7 3-8-2-1-4-9-9-5 5-6-5-12 1-8-9-7-2-7-1-12 4-2-4-7-7-4-5-15 4-7-4-8 2-14 5 1 8-7 7 7 16 2-5-9 4-1 6-8 1-5 5-6-2-8 3 0 4 5 5 0 4-8-7-7-2-8-12-4-5-7-4 2-5-6-5 6-14-8 2-4-2-8-9-4-1-13 4-8-3-7 0-10 2-3 7 0 9 5 2-3 10 15 9-1 3 3 11 0 19 7 4 0 11 8 5 0 2 11 7 9 0 5 20 2 14-7 3 2 6 12 4 1 5 7 10 1 9-8 7 0 3 4 10 0 2-4 10 4 3-4 5-2 2-6 4-2 5 17 4 3-1 7-6 8 4 14 1 28-13 7-3-1-3 4-7-2-8-5-12-1-9 2 5 8-5 5 4 6 0 8-4 8-9 4-2 7-5 4 2 2-2 7 5 9 7 7-1 16 6 7 8 17 11-4 3 5-2 9-10 4 3 15-2 6-5 1M943 611l-10 12-7-4-18 0-8-2-1-4-7-4M911 588l5-11M929 568l8-4 7-12M962 545l2-2M1543 1159l-8-2-1-7-9-7 1-4 8-9-5-18-4-3 7-27 8-4-2-20-7-3-23 11 0 10-9 10 1 7-5 2-6-5-10 7-1 7-9 7 3 12-7 8-17-1-4 8-7 2-11 0-12-21-1-7-7-10-7-30 5-6 6-1 5-10 1-6 6 0 1-5 6-3 4 0 6 6 10-3 1-5-7-4 0-6 7-12 14-4 5 3 3-3 3-11 4-4 11-3 5 2 8 11 13-4 4-6 10-4 6-12 5-4-7-8 2-3-7-11 0-6 10-21 4-2"/><path class="tbm-front" d="M961 540l8 3-1 6 3 2 0 7 3 5-1 12 6 14-9 5-7 8-10-4-7 3-2 7 5 13 12-1-14 20 0 3 10 5 13-9 5-9 6-2 16 11 8 1 7 8 17-4 15 9-2 9 8 19 15 15 20 2 4 3 5-5 3-9 8-3-3-9 3-6 23-14 3-11-4-4 0-7 10-23 2-12 6-3 2-10 6-6-1-10 3-1-1-9 6-20 9 2 3 10 6-3 1-5-4-7 33-37 117-42 59-44 52-59 14-54"/><use class="tbm-costa-g" href="#tbm-cont"/><use class="tbm-costa" href="#tbm-cont"/><text class="tbm-pais" x="1035.2" y="500" text-anchor="middle">ECUADOR</text><text class="tbm-pais" x="1134.8" y="830" text-anchor="middle">PERÚ</text><text class="tbm-oceano" x="637.1" y="760" text-anchor="middle">OCÉANO PACÍFICO</text><text class="tbm-reg" x="970.5" y="785" text-anchor="middle">PIURA</text><circle class="tbm-ciu" cx="950.5" cy="556.6" r="2.2"/><text class="tbm-ciu-t" x="955.5" y="560.1">Tumbes</text><circle class="tbm-ciu" cx="1011.2" cy="877.1" r="2.2"/><text class="tbm-ciu-t" x="1016.2" y="880.6">Chiclayo</text><circle class="tbm-ciu" cx="1092" cy="1011.2" r="2.2"/><text class="tbm-ciu-t" x="1097" y="1014.7">Trujillo</text><circle class="tbm-ciu" cx="884.5" cy="708.5" r="2.2"/><text class="tbm-ciu-t" x="889.5" y="712">Paita</text><circle class="tbm-ciu" cx="891.2" cy="610.5" r="2.2"/><text class="tbm-ciu-t" x="896.2" y="614">Máncora</text><g class="tbm-radar"><circle class="tbm-halo" cx="932.7" cy="719" r="260"/><circle class="tbm-anillo" cx="932.7" cy="719" r="45"/><text class="tbm-km" x="971.1" y="688.3">50 km</text><circle class="tbm-anillo" cx="932.7" cy="719" r="89.9"/><text class="tbm-km" x="1006.6" y="660.6">100 km</text><circle class="tbm-anillo" cx="932.7" cy="719" r="134.9"/><text class="tbm-km" x="1042" y="633">150 km</text><circle class="tbm-anillo" cx="932.7" cy="719" r="179.9"/><text class="tbm-km" x="1077.4" y="605.3">200 km</text><circle class="tbm-anillo tbm-ext" cx="932.7" cy="719" r="224.8"/><text class="tbm-km" x="1112.8" y="577.6">250 km</text><path class="tbm-eje" d="M707.9 719L1157.5 719M773.7 560L1091.7 878M932.7 494.2L932.7 943.8M1091.7 560L773.7 878"/><path class="tbm-tic" d="M1157.5 719L1166.5 719M1154.1 758L1158.5 758.8M1143.9 795.9L1148.2 797.4M1127.4 831.4L1135.2 835.9M1104.9 863.5L1108.4 866.4M1077.2 891.2L1080.1 894.7M1045.1 913.7L1049.6 921.5M1009.6 930.3L1011.1 934.5M971.7 940.4L972.5 944.8M932.7 943.8L932.7 952.8M893.6 940.4L892.9 944.8M855.8 930.3L854.3 934.5M820.3 913.7L815.8 921.5M788.2 891.2L785.3 894.7M760.5 863.5L757 866.4M738 831.4L730.2 835.9M721.4 795.9L717.2 797.4M711.3 758L706.8 758.8M707.9 719L698.9 719M711.3 680L706.8 679.2M721.4 642.1L717.2 640.6M738 606.6L730.2 602.1M760.5 574.5L757 571.6M788.2 546.8L785.3 543.3M820.3 524.3L815.8 516.5M855.8 507.7L854.3 503.5M893.6 497.6L892.9 493.2M932.7 494.2L932.7 485.2M971.7 497.6L972.5 493.2M1009.6 507.7L1011.1 503.5M1045.1 524.3L1049.6 516.5M1077.2 546.8L1080.1 543.3M1104.9 574.5L1108.4 571.6M1127.4 606.6L1135.2 602.1M1143.9 642.1L1148.2 640.6M1154.1 680L1158.5 679.2"/><text class="tbm-rumbo" x="932.7" y="478.2" text-anchor="middle">N</text><text class="tbm-rumbo" x="1177.5" y="723" text-anchor="middle">E</text><text class="tbm-rumbo" x="932.7" y="967.8" text-anchor="middle">S</text><text class="tbm-rumbo" x="687.9" y="723" text-anchor="middle">O</text><circle class="tbm-centro" cx="932.7" cy="719" r="3.4"/><g class="tbm-est" data-blip="Piura"><circle class="tbm-pulso" cx="932.7" cy="719" r="9"/><circle class="tbm-eco" cx="932.7" cy="719" r="3.6" style="animation-delay:1.75s"/><text class="tbm-est-t" x="939.7" y="722.6" text-anchor="start">Piura</text></g><g class="tbm-est" data-blip="Talara"><circle class="tbm-pulso" cx="869" cy="658" r="9"/><circle class="tbm-eco" cx="869" cy="658" r="3.6" style="animation-delay:6.1s"/><text class="tbm-est-t" x="862" y="661.6" text-anchor="end">Talara</text></g><g class="tbm-est" data-blip="Chulucanas"><circle class="tbm-pulso" cx="978.5" cy="710.8" r="9"/><circle class="tbm-eco" cx="978.5" cy="710.8" r="3.6" style="animation-delay:1.55s"/><text class="tbm-est-t" x="985.5" y="714.4" text-anchor="start">Chulucanas</text></g><g class="tbm-est" data-blip="Lancones"><circle class="tbm-pulso" cx="940.9" cy="664.3" r="9"/><circle class="tbm-eco" cx="940.9" cy="664.3" r="3.6" style="animation-delay:0.17s"/><text class="tbm-est-t" x="947.9" y="667.9" text-anchor="start">Lancones</text></g><g class="tbm-est" data-blip="Canchaque"><circle class="tbm-pulso" cx="1034.7" cy="740.1" r="9"/><circle class="tbm-eco" cx="1034.7" cy="740.1" r="3.6" style="animation-delay:1.98s"/><text class="tbm-est-t" x="1041.7" y="743.7" text-anchor="start">Canchaque</text></g><g class="tbm-est" data-blip="El Virrey"><circle class="tbm-pulso" cx="997" cy="753.6" r="9"/><circle class="tbm-eco" cx="997" cy="753.6" r="3.6" style="animation-delay:2.3s"/><text class="tbm-est-t" x="1004" y="757.2" text-anchor="start">El Virrey</text></g><g class="tbm-est" data-blip="Sechura"><circle class="tbm-pulso" cx="913.6" cy="755.7" r="9"/><circle class="tbm-eco" cx="913.6" cy="755.7" r="3.6" style="animation-delay:4.03s"/><text class="tbm-est-t" x="906.6" y="759.3" text-anchor="end">Sechura</text></g><g class="tbm-est" data-blip="Sullana"><circle class="tbm-pulso" cx="927" cy="688.9" r="9"/><circle class="tbm-eco" cx="927" cy="688.9" r="3.6" style="animation-delay:6.79s"/><text class="tbm-est-t" x="920" y="692.5" text-anchor="end">Sullana</text></g></g></svg>
+<div class="tb-tinte" aria-hidden="true"></div><div class="tb-barrido" id="tb-barrido" aria-hidden="true"></div><div class="ld-velo" aria-hidden="true"></div>
+<p class="ld-pie"><i></i>Radar del <b>norte del Perú</b><span> · datos del SENAMHI, ENFEN, IGP, NOAA y Open-Meteo</span></p>
+<main class="ld-caja">
+<div class="ld-gota" id="ld-gota" role="img" aria-label="Gotita, la guía del tablero">
+<svg class="gx" viewBox="0 0 64 72" aria-hidden="true" focusable="false">
+<defs><radialGradient id="gxG" cx=".4" cy=".45" r=".72"><stop offset="0" stop-color="#C7EBFF"/><stop offset=".42" stop-color="#5EA8FA"/><stop offset="1" stop-color="#1D4ED8"/></radialGradient><linearGradient id="gxB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FDE047"/><stop offset="1" stop-color="#F59E0B"/></linearGradient></defs>
+<ellipse class="gx-sombra" cx="32" cy="70" rx="14" ry="2.1"/>
+<g class="gx-todo">
+<g class="gx-pies"><path d="M22 62h6v5.6q0 1.4-1.4 1.4h-7.4a1.7 1.7 0 0 1-.4-3.3L22 64.6z"/><path d="M42 62h-6v5.6q0 1.4 1.4 1.4h7.4a1.7 1.7 0 0 0 .4-3.3L42 64.6z"/></g>
+<g class="gx-cu">
+<g class="gx-bi"><path class="gx-br" d="M15.5 51q-6 2.5-8.5 8"/><circle class="gx-ma" cx="6.8" cy="59.3" r="3.1"/></g>
+<path class="gx-gota" d="M32 9C30 15 13 33 13 47a19 19 0 0 0 38 0C51 33 34 15 32 9z"/>
+<path class="gx-brillo" d="M19.5 46c0-6 2.5-11 6.5-15.5"/><circle class="gx-bl" cx="20.4" cy="51.6" r="1.2" opacity=".6"/>
+<g class="gx-cara">
+<g class="gx-cejas"><path d="M21.4 35.8q3.8-2.4 7.6-.7"/><path d="M35 35.1q3.8-1.7 7.6.7"/></g>
+<g class="gx-ojos"><g class="gx-oi"><ellipse class="gx-bl" cx="25.5" cy="42.5" rx="4.4" ry="5.3"/><g class="gx-pu"><circle class="gx-iris" cx="26.1" cy="43.3" r="2.8"/><circle class="gx-ni" cx="26.1" cy="43.3" r="1.5"/><circle class="gx-bl" cx="27.2" cy="42" r=".95"/></g><path class="gx-pa" d="M21.1 42.4a4.4 5.3 0 0 1 8.8 0z"/><path class="gx-pe" d="M21.3 39.6q.9-1.5 2.6-2.2"/></g><g class="gx-od"><ellipse class="gx-bl" cx="38.5" cy="42.5" rx="4.4" ry="5.3"/><g class="gx-pu"><circle class="gx-iris" cx="39.1" cy="43.3" r="2.8"/><circle class="gx-ni" cx="39.1" cy="43.3" r="1.5"/><circle class="gx-bl" cx="40.2" cy="42" r=".95"/></g><path class="gx-pa" d="M34.1 42.4a4.4 5.3 0 0 1 8.8 0z"/><path class="gx-pe" d="M42.7 39.6q-.9-1.5-2.6-2.2"/></g></g>
+<g class="gx-gafas"><path d="M21 41.2q11-1.6 22 0" fill="none"/><rect x="20.2" y="39.6" width="10.4" height="6.6" rx="3.2"/><rect x="33.4" y="39.6" width="10.4" height="6.6" rx="3.2"/><path class="gx-gb" d="M22 41.4l2.6-.6"/><path class="gx-gb" d="M35.2 41.4l2.6-.6"/></g>
+<ellipse class="gx-mej" cx="20.8" cy="50.4" rx="3" ry="1.8"/><ellipse class="gx-mej" cx="43.2" cy="50.4" rx="3" ry="1.8"/>
+<path class="gx-boca" d="M28 51.2q4 4.2 8 0"/>
+<path class="gx-bocaA" d="M28.2 50.6q3.8-1.1 7.6 0q-.5 5.6-3.8 5.6t-3.8-5.6z"/>
+</g>
+<g class="gx-bd"><path class="gx-br" d="M48.5 51q6-2.5 9-9"/><circle class="gx-ma" cx="57.6" cy="41.4" r="3.1"/></g>
+<g class="gx-somb"><path d="M23 18.5Q23 7.5 32 7.5T41 18.5z" fill="#E8C26A" stroke="#B8892E" stroke-width=".8"/><path d="M26 11.5q6-2 12 0M24.6 14.6q7.4-2.2 14.8 0" fill="none" stroke="#C99A3B" stroke-width=".7" opacity=".8"/><rect x="23.2" y="15.6" width="17.6" height="2.9" fill="#9A3412"/><circle cx="37.6" cy="17" r="1.7" fill="#F472B6"/><circle cx="37.6" cy="17" r=".65" fill="#FDE68A"/><ellipse cx="32" cy="19" rx="17.5" ry="4.2" fill="#F2D58A" stroke="#B8892E" stroke-width=".8"/></g>
+<g class="gx-gorro"><path d="M21.6 21q.6-12.6 12.4-14.2q10.6-1.3 17 9.6l-2.8 1.6q-4.4-6-9.6-5.6q3.4 3.8 3.6 8.6z" fill="#6D28D9" stroke="#4C1D95" stroke-width=".7"/><path d="M27 9.6l1.2 2.4M33.6 8l.6 2.6M41 9.2l-.4 2.6" stroke="#FDE68A" stroke-width="1.1" stroke-linecap="round"/><path d="M21 21q11.4 3.4 22.8 0" fill="none" stroke="#EDE9FE" stroke-width="3.2" stroke-linecap="round"/><circle cx="49.6" cy="17.4" r="2.8" fill="#F5F3FF"/></g>
+<g class="gx-capu"><path d="M18 22q1-14 14-14.6t14 14.6q6 1.2 8.4 4.4q-11-2.4-22.4-2.4t-22.4 2.4q2.4-3.2 8.4-4.4z" fill="url(#gxB)" stroke="#B45309" stroke-width=".8"/><path d="M23 13.4q9-3.6 18 0" fill="none" stroke="#B45309" stroke-width=".7" opacity=".6"/></g>
+</g>
+<g class="gx-parag" transform="translate(8.6 41.5) rotate(33)"><path d="M0 0v-48" stroke="#334155" stroke-width="1.6" stroke-linecap="round"/><path d="M0 0q0 3.6 2.8 3.6t2.6-3" fill="none" stroke="#334155" stroke-width="1.6" stroke-linecap="round"/><path d="M-21-32Q-20-48 0-49Q20-48 21-32q-3.5-2.6-7 0q-3.5-2.6-7 0q-3.5-2.6-7 0q-3.5-2.6-7 0q-3.5-2.6-7 0q-3.5-2.6-7 0z" fill="#EC4899" stroke="#9D174D" stroke-width=".9"/><path d="M0-49Q-8-42-7-32M0-49Q8-42 7-32" fill="none" stroke="#FBCFE8" stroke-width="1" opacity=".8"/><path d="M-14-44Q-8-48 0-48.6" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".45"/><circle cx="0" cy="-50" r="1.3" fill="#334155"/></g>
+<g class="gx-zz"><text x="47" y="14">z</text><text x="53" y="7">z</text><text x="59" y="0">z</text></g>
+<path class="gx-sudor" d="M47 27q1.8 2.6 1.8 3.8a1.8 1.8 0 0 1-3.6 0q0-1.2 1.8-3.8z"/>
+</g>
+</svg>
+</div>
+<p class="ld-k">Tablero meteorológico</p>
+<h1>El Niño Costero</h1>
+<p class="ld-sub">Norte del Perú · pronóstico, lluvia, ríos y mar</p>
+<p class="ld-est" id="estado" aria-live="polite">Conectando con el tablero…</p>
+<div class="ld-fila" id="barra"><div class="ld-bar"><i id="ld-i"></i></div><span class="ld-pct" id="ld-pct">0 %</span></div>
+<button type="button" id="otra" hidden>Intentar de nuevo</button>
+<p class="ld-autor"><span>Desarrollado por</span><b>Raúl Edwin Zavala Sánchez</b>Docente investigador UPAO · Investigador RENACYT (CONCYTEC)</p>
+<noscript><p>Para ver el tablero, activa JavaScript en tu navegador.</p></noscript>
 </main>
+</div>
+<script>
+/* Pantalla de carga: hora de Lima, radar sobre Piura, Gotita que se mueve y avance real de la descarga */
+(function () {
+  var H = document.documentElement, d = new Date(Date.now() - 18e6), h = d.getUTCHours() + d.getUTCMinutes() / 60;
+  H.setAttribute('data-hora', h >= 5.25 && h < 6.75 ? 'alba' : h >= 6.75 && h < 17.75 ? 'dia' : h >= 17.75 && h < 19 ? 'tarde' : 'noche');
+  var ld = document.getElementById('arranque'), svg = document.getElementById('tb-mapa'), bar = document.getElementById('tb-barrido');
+  var c = (svg.getAttribute('data-c') || '0 0').split(' ').map(Number), R = +svg.getAttribute('data-r') || 236;
+  function ajustar() {   // el radar queda arriba en el celular y a la derecha en la computadora
+    var w = innerWidth, hh = innerHeight, ancho = w >= 760, u = R / (Math.min(ancho ? w * .34 : w * .47, hh * (ancho ? .44 : .3)));
+    var vw = w * u, vh = hh * u, x0 = c[0] - (ancho ? .64 : .5) * vw, y0 = c[1] - (ancho ? .5 : .3) * vh, dd = 2 * R / u;
+    svg.setAttribute('viewBox', [x0, y0, vw, vh].map(function (v) { return Math.round(v * 10) / 10; }).join(' '));
+    bar.style.width = bar.style.height = dd + 'px'; bar.style.left = ((c[0] - x0) / u - dd / 2) + 'px'; bar.style.top = ((c[1] - y0) / u - dd / 2) + 'px';
+    ld.classList.add('tb-radar-on');
+  }
+  ajustar(); addEventListener('resize', ajustar);
+  var sel = svg.querySelector('[data-blip="Piura"]'); if (sel) sel.classList.add('tbm-sel');
+  var g = document.getElementById('ld-gota'), red = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches, k = 0;
+  function hacer(a, ms) { if (red) return; g.classList.add('gx-a-' + a); setTimeout(function () { g.classList.remove('gx-a-' + a); }, ms); }
+  hacer(H.getAttribute('data-hora') === 'noche' ? 'bosteza' : 'saluda', 2400);
+  setInterval(function () { var L = ['salta', 'guina', 'saluda', 'somb']; hacer(L[k++ % 4], 1600); }, 2700);
+  var est = document.getElementById('estado'), barI = document.getElementById('ld-i'), pct = document.getElementById('ld-pct'), p = 0;
+  var MSJ = [[.1, 'Conectando con el tablero…'], [.35, 'Leyendo las estaciones del norte…'], [.6, 'Revisando el radar y el mar…'], [.85, 'Armando el pronóstico…'], [1, 'Revisando ríos y avisos…'], [2, '¡Listo!']];
+  window.__ldAvance = function (x) {
+    p = Math.max(p, Math.min(1, x)); barI.style.width = (p * 100).toFixed(1) + '%'; pct.textContent = Math.round(p * 100) + ' %';
+    var m = MSJ.filter(function (e) { return p < e[0]; })[0][1]; if (p >= 1) m = '¡Listo!';
+    if (est.textContent !== m && !est.getAttribute('data-fijo')) { est.textContent = m; g.classList.add('gx-habla'); clearTimeout(g.t); g.t = setTimeout(function () { g.classList.remove('gx-habla'); }, 1300); }
+  };
+  var t0 = Date.now();   // mientras el servidor prepara la página, el avance sube despacio hasta 12 %
+  window.__ldEspera = setInterval(function () { window.__ldAvance(.12 * (1 - Math.exp(-(Date.now() - t0) / 2500))); }, 120);
+  window.__ldFin = function (fn) { clearInterval(window.__ldEspera); window.__ldAvance(1); setTimeout(function () { ld.classList.add('listo'); setTimeout(fn, 330); }, 260); };
+})();
+</script>
 <script>
 /* Abre el tablero: pide la página del día al programa de Google y la muestra. Si no hay señal, muestra la última guardada. */
 (function () {
@@ -111,23 +317,44 @@ button{margin-top:16px;font:inherit;font-weight:700;border:0;border-radius:10px;
     document.open(); document.write(html); document.close();
   }
   function fallo() {
-    document.getElementById('estado').textContent = 'No se pudo cargar el tablero. Revisa tu conexión a internet.';
+    clearInterval(window.__ldEspera);
+    var e = document.getElementById('estado'); e.setAttribute('data-fijo', '1');
+    e.textContent = 'No se pudo cargar el tablero. Revisa tu conexión a internet.';
     document.getElementById('barra').hidden = true;
     var b = document.getElementById('otra'); b.hidden = false; b.onclick = function () { location.reload(); };
   }
+  // lee la respuesta por partes para mostrar el avance real (la página del día pesa unos 700 KB)
+  function conAvance(r, vigilar) {
+    var total = +r.headers.get('content-length') || 720000, av = window.__ldAvance || function () {};
+    if (!r.body || !r.body.getReader || !window.TextDecoder) return r.text();
+    var lector = r.body.getReader(), dec = new TextDecoder(), partes = [], n = 0;
+    return (function paso() {
+      return lector.read().then(function (x) {
+        if (x.done) { partes.push(dec.decode()); return partes.join(''); }
+        n += x.value.length; vigilar(); partes.push(dec.decode(x.value, { stream: true }));
+        av(.12 + .86 * Math.min(1, n / total)); return paso();
+      });
+    })();
+  }
   function cargar() {
-    var ctl = window.AbortController ? new AbortController() : null;
-    var reloj = setTimeout(function () { if (ctl) ctl.abort(); }, 20000);
+    var ctl = window.AbortController ? new AbortController() : null, reloj = 0;
+    function vigilar() { clearTimeout(reloj); reloj = setTimeout(function () { if (ctl) ctl.abort(); }, 20000); }   // se corta si pasan 20 s sin recibir nada
+    vigilar();
     fetch(FUENTE, { cache: 'no-store', signal: ctl ? ctl.signal : undefined }).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.text();
+      clearInterval(window.__ldEspera); vigilar();
+      return conAvance(r, vigilar);
     }).then(function (txt) {
       clearTimeout(reloj);
       if (txt.length < 20000 || txt.indexOf('id="tb"') < 0) throw new Error('respuesta incompleta');
-      guardar(txt).then(function () { pintar(txt, ''); });
+      guardar(txt).then(function () { (window.__ldFin || function (f) { f(); })(function () { pintar(txt, ''); }); });
     }).catch(function () {
       clearTimeout(reloj);
-      leer().then(function (c) { if (c) pintar(c.t, c.f || 'antes'); else fallo(); });
+      leer().then(function (c) {
+        if (!c) return fallo();
+        var e = document.getElementById('estado'); e.setAttribute('data-fijo', '1'); e.textContent = 'Sin señal: abro lo último guardado…';
+        (window.__ldFin || function (f) { f(); })(function () { pintar(c.t, c.f || 'antes'); });
+      });
     });
   }
   cargar();

@@ -223,7 +223,7 @@
       }
       msg.textContent = 'Activando los avisos…';
       return codigoCelular().then(guardarSuscripcion).then(function () {
-        sonar(); notificar('Gotita: alertas activadas', 'Así te llegará el aviso cuando venga lluvia a ' + nombre + '.', 'gotita-prueba');
+        sonar(); notificar('Gotita: alertas activadas', 'Así te llegará el aviso cuando venga lluvia a ' + d[1] + '.', 'gotita-prueba');   // el globo del celular no lee negritas
         fin('Listo. Gotita te avisará si viene lluvia a ' + nombre + '. Te mandé un aviso de prueba. ' + AYUDA_EMERGENTE + ' Es un pronóstico orientativo; las alertas oficiales las dan el SENAMHI y el INDECI.');
       });
     }).catch(function (e) {
