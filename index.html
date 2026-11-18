@@ -6,7 +6,7 @@
 <title>Tablero El Niño Piura</title>
 <meta name="description" content="Pronóstico, lluvia, ríos y mar de Piura y La Libertad, con datos que se actualizan cada día. Elaboración: Raúl Edwin Zavala Sánchez, investigador RENACYT.">
 <meta name="author" content="Raúl Edwin Zavala Sánchez">
-<meta name="theme-color" content="#0B2545">
+<meta name="theme-color" content="#0E0F4A">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="favicon-32.png">
 <link rel="apple-touch-icon" href="icono-180.png">
@@ -29,10 +29,10 @@
 <meta name="twitter:title" content="Tablero meteorológico El Niño Costero · Piura">
 <meta name="twitter:description" content="Pronóstico, lluvia, ríos y mar de Piura y La Libertad, con datos que se actualizan cada día. Elaboración: Raúl Edwin Zavala Sánchez, investigador RENACYT.">
 <meta name="twitter:image" content="https://rezavalas.github.io/elninopiura/vista.jpg">
-<style>
+<style>html,body{margin:0;height:100%;background:#0E0F4A;overflow:hidden}</style>
+<style id="ld-css">
 /* Pantalla de carga (18 nov. 2026): el mapa del norte del Perú con el radar girando sobre Piura, y Gotita */
-html,body{margin:0;height:100%;background:#0E0F4A;overflow:hidden}
-body{color:#fff;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.ld{color:#fff;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .ld{position:fixed;inset:0;isolation:isolate;transition:opacity .35s,transform .35s}
 .ld.listo{opacity:0;transform:scale(1.02)}
 .tb-mapa{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:-3}
@@ -103,7 +103,7 @@ body{color:#fff;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans
 .ld-gota{width:104px;height:117px;margin:-74px auto 4px;filter:drop-shadow(0 10px 16px rgba(0,0,0,.4))}
 .ld-gota svg{width:100%;height:100%;display:block}
 .ld-k{margin:0;font-size:.68rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#A5F3FC}
-h1{margin:4px 0 2px;font-size:1.55rem;line-height:1.15;font-weight:850;letter-spacing:-.01em;text-shadow:0 2px 12px rgba(5,3,30,.5)}
+.ld h1{margin:4px 0 2px;font-size:1.55rem;line-height:1.15;font-weight:850;letter-spacing:-.01em;text-shadow:0 2px 12px rgba(5,3,30,.5)}
 .ld-sub{margin:0;color:#C7D2FE;font-size:.84rem}
 .ld-est{margin:14px 0 8px;min-height:1.3em;font-size:.92rem;color:#E0E7FF;font-weight:600}
 .ld-fila{display:flex;align-items:center;gap:10px}
@@ -117,11 +117,11 @@ h1{margin:4px 0 2px;font-size:1.55rem;line-height:1.15;font-weight:850;letter-sp
 .ld-pie b{color:#D9F99D;font-weight:800}
 .ld-pie i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#A3E635;margin-right:6px;vertical-align:1px;box-shadow:0 0 0 0 rgba(163,230,53,.7);animation:ldPunto 1.6s ease-out infinite}
 @keyframes ldPunto{to{box-shadow:0 0 0 8px rgba(163,230,53,0)}}
-button{margin-top:14px;font:inherit;font-weight:800;border:0;border-radius:10px;padding:10px 18px;background:#F59E0B;color:#0B2545;cursor:pointer}
-[hidden]{display:none!important}
-[data-hora=noche] .tb-tinte::before{top:54px;right:14%}
+.ld button{margin-top:14px;font:inherit;font-weight:800;border:0;border-radius:10px;padding:10px 18px;background:#F59E0B;color:#0B2545;cursor:pointer}
+.ld [hidden]{display:none!important}
+[data-hora=noche] .ld .tb-tinte::before{top:54px;right:14%}
 @media (max-width:759px){.ld-pie span{display:none}}
-@media (min-width:760px){.ld-caja{left:7%;bottom:auto;top:50%;transform:translateY(-44%);width:360px}.ld-gota{width:124px;height:140px;margin-top:-92px}h1{font-size:1.8rem}}
+@media (min-width:760px){.ld-caja{left:7%;bottom:auto;top:50%;transform:translateY(-44%);width:360px}.ld-gota{width:124px;height:140px;margin-top:-92px}.ld h1{font-size:1.8rem}}
 @media (prefers-reduced-motion:reduce){.tb-radar-on .tb-barrido,.tbm-eco,.ld-pie i{animation:none}}
 /* Gotita animada (18 nov. 2026): respira, parpadea, mira, saluda, salta, guiña; se viste según la hora y el tiempo */
 .gx{overflow:visible}
@@ -279,7 +279,7 @@ button{margin-top:14px;font:inherit;font-weight:800;border:0;border-radius:10px;
   };
   var t0 = Date.now();   // mientras el servidor prepara la página, el avance sube despacio hasta 12 %
   window.__ldEspera = setInterval(function () { window.__ldAvance(.12 * (1 - Math.exp(-(Date.now() - t0) / 2500))); }, 120);
-  window.__ldFin = function (fn) { clearInterval(window.__ldEspera); window.__ldAvance(1); setTimeout(function () { ld.classList.add('listo'); setTimeout(fn, 330); }, 260); };
+  window.__ldFin = function (fn) { clearInterval(window.__ldEspera); window.__ldAvance(1); setTimeout(fn, 420); };
 })();
 </script>
 <script>
@@ -291,7 +291,7 @@ button{margin-top:14px;font:inherit;font-weight:800;border:0;border-radius:10px;
   // Chrome avisa que la app se puede instalar; se guarda el aviso para el botón «Instalar».
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); window.__bip = e; });
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
-  var CABEZA = '<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0B2545">'
+  var CABEZA = '<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0E0F4A">'
     + '<link rel="icon" type="image/png" href="favicon-32.png"><link rel="apple-touch-icon" href="icono-180.png">'
     + '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="El Niño Piura">'
     + '<script src="config.js"><\/script><script src="app.js"><\/script><script src="alertas.js"><\/script>';   // al principio, para no perder el aviso de Chrome de que se puede instalar
@@ -309,9 +309,35 @@ button{margin-top:14px;font:inherit;font-weight:800;border:0;border-radius:10px;
       return r ? r.text().then(function (t) { return { t: t, f: r.headers.get('X-Guardado') || '' }; }) : null;
     }).catch(function () { return null; });
   }
+  // La pantalla de carga pasa al tablero y se queda encima hasta que el tablero termina de dibujarse:
+  // así no se ve la página en blanco (celeste claro) mientras el teléfono arma los gráficos.
+  function tapa() {
+    try {
+      var ld = document.getElementById('arranque'), css = document.getElementById('ld-css');
+      if (!ld || !css) return '';
+      var giro = 0;
+      try { var an = document.getElementById('tb-barrido').getAnimations(); giro = an.length ? (an[0].currentTime || 0) % 7000 : 0; } catch (e) {}
+      var c = ld.cloneNode(true); c.id = 'ld-tapa'; c.classList.remove('listo');
+      var m = c.querySelector('#tb-mapa'); if (m) m.id = 'ld-mapa';
+      var b = c.querySelector('#tb-barrido'); if (b) { b.id = 'ld-barrido'; b.style.animationDelay = (-Math.round(giro)) + 'ms'; }
+      var g = c.querySelector('#ld-gota'); if (g) g.setAttribute('class', g.getAttribute('class').replace(/\s*gx-(a-[a-z]+|habla)\b/g, ''));
+      var e = c.querySelector('#estado'); if (e && !e.getAttribute('data-fijo')) e.textContent = 'Abriendo el tablero…';
+      var hora = document.documentElement.getAttribute('data-hora') || 'dia';
+      var txt = JSON.stringify(c.outerHTML).replace(/<\//g, '<\\/');
+      return '<style class="ld-tapa-css">' + css.textContent + '</style>'
+        + '<style class="ld-tapa-css">html.ld-cubre{background:#0E0F4A}#ld-tapa{z-index:2147483000}#ld-tapa.listo{pointer-events:none}</style>'
+        + '<script>(function(){var H=document.documentElement;H.setAttribute("data-hora",' + JSON.stringify(hora) + ');H.classList.add("ld-cubre");'
+        + 'var d=document.createElement("div");d.innerHTML=' + txt + ';var t=d.firstChild;H.appendChild(t);'
+        + 'var g=t.querySelector("#ld-gota"),L=["salta","guina","saluda","somb"],k=0,red=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;'
+        + 'var iv=(red||!g)?0:setInterval(function(){var a="gx-a-"+L[k++%4];g.classList.add(a);setTimeout(function(){g.classList.remove(a)},1600)},2700);'
+        + 'var fuera=0;function quitar(){if(fuera)return;fuera=1;clearInterval(iv);t.classList.add("listo");H.classList.remove("ld-cubre");setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);[].forEach.call(document.querySelectorAll("style.ld-tapa-css"),function(x){x.parentNode.removeChild(x)})},450)}'
+        + 'function listo(){setTimeout(function(){requestAnimationFrame(function(){requestAnimationFrame(quitar)})},150)}'
+        + 'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",listo);else listo();setTimeout(quitar,25000)})();<\/script>';
+    } catch (e) { return ''; }
+  }
   function pintar(html, guardadoEl) {
     window.__APP_GUARDADO__ = guardadoEl || '';
-    html = html.replace(/<head[^>]*>/i, function (m) { return m + CABEZA; });
+    html = html.replace(/<head[^>]*>/i, function (m) { return m + tapa() + CABEZA; });
     // d3 desde la misma dirección de la app: Chrome puede bloquear scripts de otros sitios escritos así con señal débil
     html = html.replace(/https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/d3\/[0-9.]+\/d3\.min\.js/g, 'd3.min.js');
     document.open(); document.write(html); document.close();
