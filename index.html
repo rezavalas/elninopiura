@@ -294,7 +294,7 @@
   var CABEZA = '<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0E0F4A">'
     + '<link rel="icon" type="image/png" href="favicon-32.png"><link rel="apple-touch-icon" href="icono-180.png">'
     + '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="El Niño Piura">'
-    + '<script src="config.js"><\/script><script src="app.js"><\/script><script src="alertas.js"><\/script>';   // al principio, para no perder el aviso de Chrome de que se puede instalar
+    + '<script src="config.js"><\/script><script src="app.js"><\/script><script src="alertas.js"><\/script><link rel="stylesheet" href="shell.css"><script src="shell.js"><\/script>';   // al principio, para no perder el aviso de Chrome de que se puede instalar
   function guardar(txt) {
     if (!window.caches) return Promise.resolve();
     var listo = caches.open(CACHE).then(function (c) {
