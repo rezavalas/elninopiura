@@ -14,7 +14,7 @@
   var TOUR = 'tb-sh-recorrido-v1';
   // El recorrido de antes señala la barra de pestañas, que en la app ya no se ve: se marca como visto
   // (alertas.js ya leyó si estaba visto, así su pregunta queda para el final del recorrido nuevo).
-  if (!LS.get(TOUR, 0)) { var gv = LS.get('tb-guia-v1', {}) || {}; if (!gv.visto) { gv.visto = 1; LS.set('tb-guia-v1', gv); } }
+  var gv = LS.get('tb-guia-v1', {}) || {}; if (!gv.visto) { gv.visto = 1; LS.set('tb-guia-v1', gv); }
   var H = document.documentElement;
   H.classList.add('sh'); H.setAttribute('data-shv', 'inicio');
 
@@ -95,9 +95,10 @@
     return pDist;
   }
   function zona() { var z = LS.get('tb-sh-zona', null); return Array.isArray(z) && z.length >= 6 ? z : ZONA_DEF; }
+  function zonaElegida() { return Array.isArray(LS.get('tb-sh-zona', null)); }
   function ponerZona(d) {
     LS.set('tb-sh-zona', d);
-    pintarLugar(); pintarZona();
+    pintarLugar(); pintarZona(); aplicarZona();
     if (CAL.mapa) { CAL.mapa.setView([d[4], d[5]], Math.max(CAL.mapa.getZoom(), 9)); lecturaZona(); }
   }
   function kmEntre(a1, o1, a2, o2) {
@@ -115,6 +116,8 @@
     });
   }
 
+  try { distritos().catch(function () {}); } catch (e) {}   // listo antes de armar la página
+
   /* ---------- vistas ---------- */
   var VISTAS = {
     inicio: { tab: null, nav: 'inicio' },
@@ -128,20 +131,105 @@
   var TAB2V = { tiempo: 'pron', graficas: 'reg', vivo: 'radar', mar: 'nino', avisos: 'avisos' };
   var NAV = [['inicio', 'Inicio', 'inicio'], ['pron', 'Pronóstico', 'pron'], ['radar', 'Radar/satélite', 'radar'], ['calor', 'Mapa de calor', 'calor'], ['nino', 'El Niño', 'nino']];
   var vista = 'inicio', sincronizando = false;
-  // Región de la zona elegida → botones de región del tablero y tabla de pronóstico. Tumbes y Lambayeque entran cuando el
-  // tablero tenga sus botones (data-v) y tablas con estos nombres; mientras tanto se muestra Piura.
-  var REG = {
-    'Piura': { v: ['piura'], pron: ['pronostico'] },
-    'La Libertad': { v: ['trujillo', 'lalibertad', 'la-libertad'], pron: ['tru_pron'] },
-    'Tumbes': { v: ['tumbes'], pron: ['tum_pron', 'tumbes_pron'] },
-    'Lambayeque': { v: ['lambayeque', 'chiclayo'], pron: ['lam_pron', 'lambayeque_pron'] }
+  // La zona elegida manda en todo el tablero: región (Piura, Trujillo y las que se agreguen) y estación más cercana,
+  // también en la cabecera («Ahora» y la fila de estaciones). Las regiones y sus estaciones se leen del propio tablero
+  // (var REG = { piura: { est: [...] }, ... } en su código), así una región nueva funciona sin tocar este archivo.
+  // Coordenadas: las de abajo (las mismas del tablero), window.TB_EST_XY si el tablero las publica, o la capital del
+  // distrito que se llama igual que la estación (distritos.json).
+  var EST_XY = {
+    'Piura': [-5.19, -80.63], 'Talara': [-4.58, -81.27], 'Chulucanas': [-5.1083, -80.1694], 'Lancones': [-4.6428, -80.5472],
+    'Canchaque': [-5.4006, -79.6053], 'El Virrey': [-5.5358, -79.9842], 'Sechura': [-5.557, -80.822], 'Sullana': [-4.889, -80.687],
+    'Trujillo': [-8.087, -79.109], 'Pacasmayo': [-7.4029, -79.5685], 'Casa Grande': [-7.7446, -79.1879], 'Virú': [-8.4143, -78.7522],
+    'Otuzco': [-7.9025, -78.5657], 'Huamachuco': [-7.8155, -78.0487]
   };
-  function regionPagina(sel) {
-    var R = REG[zona()[3]] || REG.Piura, L = R.v.concat(['piura']);
-    for (var i = 0; i < L.length; i++) {
-      var b = $(sel + ' button[data-v="' + L[i] + '"]');
-      if (b) { if (b.getAttribute('aria-pressed') !== 'true') b.click(); return; }
+  var ESTZ = null;   // { r: región del tablero, e: estación, km }
+  function sinTilde(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim(); }
+  function regionesPagina() {
+    var out = {};
+    [].forEach.call(document.scripts, function (sc) {
+      var t = sc.textContent || '', m0 = /var REG\s*=\s*\{/.exec(t); if (!m0) return;
+      var fin = t.indexOf('\n};', m0.index); var seg = t.slice(m0.index, fin > 0 ? fin : m0.index + 8000);
+      var re = /([a-z_]+)\s*:\s*\{[^{}]*?\best\s*:\s*\[([^\]]*)\]/g, m;   // est puede no ir primero (pref, medidas…)
+      while ((m = re.exec(seg))) { var L = (m[2].match(/'[^']+'|"[^"]+"/g) || []).map(function (x) { return x.slice(1, -1); }); if (L.length) out[m[1]] = L; }
+    });
+    if (!Object.keys(out).length) {   // respaldo: lo que muestren los botones
+      var b = $('#reg-tiempo button[aria-pressed="true"]'), r = b && b.getAttribute('data-v');
+      if (r) out[r] = [].map.call(document.querySelectorAll('#sel-est button[data-v]'), function (x) { return x.getAttribute('data-v'); });
     }
+    return out;
+  }
+  function coordEst(e, D, reg) {
+    var X = window.TB_EST_XY || {};
+    if (X[e]) return X[e];
+    if (EST_XY[e]) return EST_XY[e];
+    var n = sinTilde(e), c = (D || []).filter(function (d) { return sinTilde(d[1]) === n; });
+    if (c.length > 1 && reg) { var c2 = c.filter(function (d) { return sinTilde(d[3]).indexOf(sinTilde(reg).slice(0, 4)) >= 0; }); if (c2.length) c = c2; }
+    return c.length ? [c[0][4], c[0][5]] : null;
+  }
+  function pulsar(sel, v) {
+    var b = null; document.querySelectorAll(sel + ' button[data-v]').forEach(function (x) { if (x.getAttribute('data-v') === v) b = x; });
+    if (b && b.getAttribute('aria-pressed') !== 'true') b.click();
+    return !!b;
+  }
+  function aplicarZona() {
+    var z = zona(), R = regionesPagina();
+    if (!Object.keys(R).length) return Promise.resolve(null);
+    function calcular(D, solo) {
+      var mejor = null, faltan = 0;
+      Object.keys(R).forEach(function (rk) {
+        if (solo && solo.indexOf(rk) < 0) return;
+        R[rk].forEach(function (e) {
+          var xy = coordEst(e, D, rk); if (!xy) { faltan++; return; }
+          var km = kmEntre(z[4], z[5], xy[0], xy[1]);
+          if (!mejor || km < mejor.km) mejor = { r: rk, e: e, km: km };
+        });
+      });
+      return { m: mejor, faltan: faltan };
+    }
+    function poner(m, D) {
+      if (!m) return null;
+      ESTZ = m;
+      pulsar('#reg-tiempo', m.r);   // región en la cabecera y en Pronóstico
+      pulsar('#sel-est', m.e);      // estación más cercana
+      if (!pulsar('#reg-cau', m.r)) {   // ríos: la misma región o, si no tiene, la región con ríos más cercana
+        var conRios = [].map.call(document.querySelectorAll('#reg-cau button[data-v]'), function (b) { return b.getAttribute('data-v'); });
+        var mc = calcular(D, conRios).m; if (mc) pulsar('#reg-cau', mc.r);
+      }
+      pintarInicio();
+      return m;
+    }
+    // con las coordenadas conocidas se aplica al instante (sin parpadeo de Piura); si una estación nueva no las tiene,
+    // se completa con distritos.json
+    var c = calcular(DIST);
+    if (!c.faltan && c.m) return Promise.resolve(poner(c.m, DIST));
+    if (c.m) poner(c.m, DIST);
+    return distritos().then(function (D) { return poner(calcular(D).m, D); }).catch(function () { return c.m; });
+  }
+  // Primera vez sin zona elegida: el distrito de las alertas, o el GPS si ya hay permiso; si no, Gotita lo ofrece una vez.
+  function zonaInicial() {
+    var al = LS.get('tb-alertas', null);
+    if (al && al.ubigeo) {
+      distritos().then(function (D) { var d = D.filter(function (x) { return x[0] === al.ubigeo; })[0]; if (d && !zonaElegida()) ponerZona(d); }).catch(function () {});
+      return;
+    }
+    function porGps() {
+      ubicarme().then(function (c) { return distritos().then(function (D) { return masCercano(D, c.latitude, c.longitude); }); })
+        .then(function (m) { if (m.d && m.km < 80 && !zonaElegida()) ponerZona(m.d); }).catch(function () {});
+    }
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'geolocation' }).then(function (st) { if (st.state === 'granted') porGps(); else if (st.state === 'prompt') ofrecerUbicacion(); }).catch(function () { ofrecerUbicacion(); });
+    } else ofrecerUbicacion();
+  }
+  function ofrecerUbicacion() {
+    if (LS.get('tb-sh-ofreci-ubic', 0)) return;
+    function intentar() {
+      if (zonaElegida()) return;
+      if (TOURA || hojaAbierta) return setTimeout(intentar, 4000);
+      LS.set('tb-sh-ofreci-ubic', 1);
+      if (window.__tbGotitaDecir) window.__tbGotitaDecir('¿Te ubico? Así te muestro el tiempo, el pronóstico y los ríos de <b>tu zona</b>.',
+        [{ t: 'Sí, ubícame', prim: true, f: function () { var b = $('#sh-gps'); if (b) gpsRapido(b); } }, { t: 'Elegir distrito', f: function () { hojaLugar(); } }], 0);
+    }
+    setTimeout(intentar, 4000);
   }
   function irVista(v, empujar) {
     if (!VISTAS[v]) v = 'inicio';
@@ -154,8 +242,7 @@
       if (b && b.getAttribute('aria-selected') !== 'true') { sincronizando = true; b.click(); sincronizando = false; }
     }
     try { history.replaceState({ shv: v }, '', location.href); } catch (e) {}
-    if (v === 'pron') regionPagina('#reg-tiempo');
-    if (v === 'avisos') { regionPagina('#reg-cau'); pintarMis(); }
+    if (v === 'avisos') pintarMis();
     document.querySelectorAll('.sh-nav button').forEach(function (n) {
       if (n.getAttribute('data-v') === V.nav) n.setAttribute('aria-current', 'page'); else n.removeAttribute('aria-current');
     });
@@ -259,17 +346,32 @@
       }).catch(function (e) { btn.disabled = false; decir(esc(e.message)); });
   }
   function decir(html) {
-    if (window.__tbGotitaDecir) window.__tbGotitaDecir(html, [{ t: 'Entendido', prim: true, f: function () {} }], true);
+    // el tercer dato es el tiempo en pantalla, en milisegundos
+    if (window.__tbGotitaDecir) window.__tbGotitaDecir(html, [{ t: 'Entendido', prim: true, f: function () {} }], 15000);
   }
 
   /* ---------- Inicio ---------- */
-  function pronHoy() {
-    var G = REG[zona()[3]] || REG.Piura, R = [], lugar = 'Piura';
-    for (var i = 0; i < G.pron.length && !R.length; i++) R = filas(G.pron[i]);
-    if (!R.length) R = filas('pronostico');
-    else if (R[0].estacion) { lugar = R[0].estacion; var e0 = R[0].estacion; R = R.filter(function (r) { return r.estacion === e0; }); }
+  // Tablas de pronóstico diario que trae el tablero (las que tienen fecha, cielo y tmax), leídas de sus datos: así una
+  // región nueva con su propia tabla funciona sin tocar este archivo.
+  var TPRON = null;
+  function tablasPron() {
+    if (TPRON) return TPRON;
+    TPRON = [];
+    [].forEach.call(document.scripts, function (sc) {
+      var t = sc.textContent || ''; if (t.indexOf('var DATA') < 0) return;
+      var re = /"([a-z_0-9]+)"\s*:\s*\{\s*"c"\s*:\s*\[([^\]]*)\]/g, m;
+      while ((m = re.exec(t))) { var c = m[2]; if (/"fecha"/.test(c) && /"tmax"/.test(c) && /"cielo"/.test(c)) TPRON.push({ id: m[1], est: /"estacion"/.test(c) }); }
+    });
+    return TPRON;
+  }
+  function pronHoy() {   // como el tablero: Piura con su tabla propia; las demás, la tabla que tenga su estación
+    var e = ESTZ ? ESTZ.e : 'Piura', R = [], T = tablasPron(), i;
+    if (e === 'Piura') R = filas('pronostico');
+    for (i = 0; i < T.length && !R.length; i++) if (T[i].est) R = filas(T[i].id).filter(function (r) { return r.estacion === e; });
+    if (!R.length) { var id = sinTilde(e).replace(/\s+/g, '_'); for (i = 0; i < T.length; i++) if (T[i].id === id) R = filas(id); }
+    if (!R.length) { R = filas('pronostico'); e = 'Piura'; }
     var h = hoyLima();
-    return { lugar: lugar, R: R.filter(function (r) { return String(r.fecha).slice(0, 10) >= h; }) };
+    return { lugar: e, R: R.filter(function (r) { return String(r.fecha).slice(0, 10) >= h; }) };
   }
   function pintarInicio() {
     var c = $('#sh-c-hoy'); if (!c) return;
@@ -644,8 +746,10 @@
         L.marker(ll, { icon: L.divIcon({ className: '', iconSize: [18, 18], html: '<div class="sh-yo"></div>' }), title: 'Estás aquí', alt: 'Estás aquí' })
       ]).addTo(CAL.mapa);
       CAL.mapa.setView(ll, Math.max(CAL.mapa.getZoom(), 10));
-      var m = masCercano(CAL.D, ll[0], ll[1]);
-      var html = popTemp(ll[0], ll[1], 'Estás aquí') + (m.d && m.km < 80 && m.d[0] !== zona()[0] ? '<button type="button" class="sh-link" id="sh-usar-zona">Usar ' + esc(m.d[1]) + ' como mi zona</button>' : '');
+      var m = masCercano(CAL.D, ll[0], ll[1]), nueva = false;
+      if (m.d && m.km < 80 && !zonaElegida()) { ponerZona(m.d); nueva = true; }   // sin zona elegida: queda la de su ubicación
+      var html = popTemp(ll[0], ll[1], 'Estás aquí') + (nueva ? '<div class="sh-pop">Tu zona ahora es <b>' + esc(m.d[1]) + '</b>: el tablero muestra su región y su estación más cercana.</div>'
+        : m.d && m.km < 80 && m.d[0] !== zona()[0] ? '<button type="button" class="sh-link" id="sh-usar-zona">Usar ' + esc(m.d[1]) + ' como mi zona</button>' : '');
       L.popup({ maxWidth: 260 }).setLatLng(ll).setContent(html).openOn(CAL.mapa);
       setTimeout(function () { var u = $('#sh-usar-zona'); if (u) u.addEventListener('click', function () { ponerZona(m.d); CAL.mapa.closePopup(); }); }, 30);
       if (msg) msg.textContent = '';
@@ -746,7 +850,8 @@
       if (v && v !== vista && vista !== 'inicio' && vista !== 'calor') irVista(v, false);
     }).observe(tabs, { subtree: true, attributes: true, attributeFilter: ['aria-selected'] });
 
-    pintarLugar(); pintarCampana(); pintarInicio(); pintarZona(); pintarAccesos();
+    pintarLugar(); pintarCampana(); aplicarZona(); pintarInicio(); pintarZona(); pintarAccesos();
+    if (!zonaElegida()) zonaInicial();
     if (window.dash && window.dash.onData) try { window.dash.onData(function () { pintarCampana(); pintarInicio(); }); } catch (e) {}
     try { history.replaceState({ shv: 'inicio' }, ''); } catch (e) {}
     irVista('inicio', false);

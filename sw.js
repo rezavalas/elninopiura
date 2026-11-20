@@ -1,6 +1,6 @@
 /* App del Tablero El Niño Piura: guarda lo necesario para abrir sin señal.
    La app misma se pide primero a la red, así cada cambio llega solo; la página del día la guarda index.html. */
-var VERSION = 'elninopiura-10';
+var VERSION = 'elninopiura-11';
 var BASE = ['./', './index.html', './app.js', './alertas.js', './config.js', './shell.js', './shell.css', './leaflet.js', './leaflet.css', './distritos.json', './sirena.mp3', './d3.min.js', './manifest.webmanifest', './icono-192.png', './icono-512.png', './icono-maskable-512.png', './icono-180.png', './favicon-32.png'];
 
 // Avisos de lluvia de Gotita (Firebase Cloud Messaging): llegan aunque la app esté cerrada.
