@@ -29,7 +29,7 @@ html.sh:not([data-shv="pron"]):not([data-shv="reg"]) #sh-seg-pron { display: non
 .sh-titulo p { margin: 2px 0 0; font-size: 13px; color: #C7D2FE; }
 
 /* barra de secciones */
-.sh-nav { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: 100%; max-width: 760px; z-index: 900;
+.sh-nav { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: 100%; max-width: 760px; z-index: 900;
   display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); background: #12146A; border-top: 1px solid rgba(199,210,254,.18);
   padding: 4px 2px calc(6px + env(safe-area-inset-bottom, 0px)); box-sizing: border-box; box-shadow: 0 -8px 24px rgba(14,15,74,.22); }
 @media (min-width: 760px) { .sh-nav { border-radius: 20px 20px 0 0; } }
