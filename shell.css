@@ -168,3 +168,15 @@ html.sh-en-tour #tb-g-burbuja { display: none !important; }
 .sh-tour-acc button.sh-sig { background: #12146A; color: #fff; padding: 0 22px; }
 .sh-tour-acc .sh-saltar { margin-right: auto; }
 @media (prefers-reduced-motion: reduce) { .sh-tour-foco { transition: none; } }
+
+/* Parlante de la cabecera: lee el resumen de la ciudad que se ve */
+.sh-parla{flex:none;width:36px;height:36px;margin:-6px 0;padding:0;border-radius:50%;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.14);color:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .2s,color .2s,transform .12s}
+.sh-parla svg{width:20px;height:20px}
+.sh-parla:active{transform:scale(.92)}
+.sh-parla:focus-visible{outline:2px solid #FDE68A;outline-offset:2px}
+.sh-parla.sh-hablando{background:#FDE68A;border-color:#FDE68A;color:#12146A;animation:sh-parla-pulso 1.4s ease-out infinite}
+.sh-parla.sh-hablando .sh-onda{animation:sh-onda 1s ease-in-out infinite}
+.sh-parla.sh-hablando .sh-onda2{animation-delay:.3s}
+@keyframes sh-parla-pulso{0%{box-shadow:0 0 0 0 rgba(253,230,138,.6)}75%,100%{box-shadow:0 0 0 11px rgba(253,230,138,0)}}
+@keyframes sh-onda{0%,100%{opacity:.25}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.sh-parla.sh-hablando,.sh-parla.sh-hablando .sh-onda{animation:none}}

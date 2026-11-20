@@ -374,6 +374,7 @@
     return { lugar: e, R: R.filter(function (r) { return String(r.fecha).slice(0, 10) >= h; }) };
   }
   function pintarInicio() {
+    ponerParlante();
     var c = $('#sh-c-hoy'); if (!c) return;
     var P0 = pronHoy(), R = P0.R, h = R[0];
     if (!h) { c.innerHTML = '<h3>Pronóstico de hoy</h3><p class="sh-fuente">El pronóstico se está actualizando.</p>'; return; }
@@ -505,34 +506,112 @@
       });
     });
   }
-  function resumen() {
-    var t = [], E = filas('estaciones'), e = E[0], h = pronHoy().R[0], V = vigentes(), N = filas('nino_semanal'), n = N[N.length - 1];
+  /* ---------- resumen hablado (parlante de la cabecera y menú de Gotita) ---------- */
+  // Se arma con lo que muestra la cabecera, así habla siempre de la ciudad que el usuario está viendo.
+  var DIRV = { N: 'norte', S: 'sur', E: 'este', O: 'oeste', W: 'oeste', NE: 'noreste', NO: 'noroeste', NW: 'noroeste', SE: 'sureste', SO: 'suroeste', SW: 'suroeste',
+    NNE: 'nor-noreste', ENE: 'este-noreste', ESE: 'este-sureste', SSE: 'sur-sureste', SSO: 'sur-suroeste', SSW: 'sur-suroeste', OSO: 'oeste-suroeste', WSW: 'oeste-suroeste',
+    ONO: 'oeste-noroeste', WNW: 'oeste-noroeste', NNO: 'nor-noroeste', NNW: 'nor-noroeste' };
+  var NIV = { rojo: 4, naranja: 3, amarillo: 2, verde: 1 };
+  function tx(s) { var e = $(s); return e ? (e.textContent || '').replace(/\s+/g, ' ').trim() : ''; }
+  function pares(s) {   // los <span>Etiqueta <b>valor</b></span> de la cabecera
+    var o = {}; [].forEach.call(document.querySelectorAll(s + ' > span'), function (sp) {
+      var b = sp.querySelector('b'); if (!b) return; o[sp.textContent.replace(b.textContent, '').trim().replace(/\.$/, '')] = b.textContent.trim();
+    }); return o;
+  }
+  function vozNum(v) { return String(v).replace(/[°\s]+$/, '').replace(/°C?/g, '').trim(); }
+  function lugarCab() { return tx('#tb-now .tb-now-lugar') || 'Piura'; }
+  function resumenCabecera() {
+    var lugar = lugarCab(), t = [], z = zona();
+    if (zonaElegida() && ESTZ && ESTZ.e === lugar && sinTilde(z[1]) !== sinTilde(lugar)) t.push('Estás en ' + z[1] + '. La estación más cercana es ' + lugar + '.');
+    else t.push('El tiempo en ' + lugar + '.');
+    var T = vozNum(tx('#now-t')), cielo = tx('#now-cielo').toLowerCase(), src = tx('#now-src');
+    if (T && T !== '—') {
+      var m = /^Medido\s+(\d{1,2}:\d{2})/.exec(src);
+      t.push((m ? 'Medido a las ' + m[1] + ': ' : 'Ahora, según el pronóstico: ') + T + ' grados' + (cielo ? ', ' + cielo : '') + '.');
+    }
+    var h = pares('#now-hoy'), hoy = [];
+    if (h['Máx'] && h['Mín']) hoy.push('máxima de ' + vozNum(h['Máx']) + ' y mínima de ' + vozNum(h['Mín']) + ' grados');
+    else if (h['Máx']) hoy.push('máxima de ' + vozNum(h['Máx']) + ' grados');
+    if (h.Lluvia) {
+      var ll = h.Lluvia.split('·'), pr = vozNum(ll[0]).replace(/\s*%$/, '');
+      hoy.push(pr + ' por ciento de probabilidad de lluvia' + (ll[1] ? ', unos ' + ll[1].replace(/\s*mm/, '').trim() + ' milímetros' : ''));
+    }
+    if (hoy.length) t.push('Hoy, ' + hoy.join('; ') + '.');
+    var d = pares('#now-dat'), dd = [];
+    if (d.Humedad) dd.push('humedad de ' + d.Humedad.replace(/\s*%$/, '') + ' por ciento');
+    if (d.Viento) {
+      if (/calma/i.test(d.Viento)) dd.push('viento en calma');
+      else { var w = /^([A-Z]{1,3})?\s*(\d+)/.exec(d.Viento); if (w) dd.push('viento' + (w[1] && DIRV[w[1]] ? ' del ' + DIRV[w[1]] : '') + ' a ' + w[2] + ' kilómetros por hora'); }
+    }
+    if (d['Ráfagas']) dd.push('ráfagas de ' + d['Ráfagas'].replace(/\s*km\/h/, '') + ' kilómetros por hora');
+    if (dd.length) t.push(dd[0].charAt(0).toUpperCase() + dd.join(', ').slice(1) + '.');
+    var V = vigentes(), top = null;   // el mismo aviso que muestra la cabecera: el del SENAMHI de nivel más alto
+    V.forEach(function (a) { if (a.emisor === 'SENAMHI' && (NIV[String(a.nivel || '').toLowerCase()] || 0) > (top ? NIV[String(top.nivel).toLowerCase()] || 0 : 0)) top = a; });
+    if (top) {
+      var pel = String(top.peligro || top.documento || '').replace(/;.*$/, '').replace(/N\.?\s*°\s*/g, 'número ').trim();
+      t.push('Aviso del SENAMHI de nivel ' + String(top.nivel).toLowerCase() + (pel ? ': ' + pel.charAt(0).toLowerCase() + pel.slice(1) : '') + '.');
+    }
+    if (V.length > 1 || (V.length === 1 && !top)) t.push('En total hay ' + (V.length === 1 ? 'un aviso vigente' : V.length + ' avisos vigentes') + '; los ves en la campana.');
+    else if (!V.length) t.push('No hay avisos vigentes.');
+    return t.join(' ');
+  }
+  function resumen() {   // el del menú de Gotita: lo de la cabecera, más el río y el mar
+    var t = [resumenCabecera()], b = $('#reg-tiempo button[aria-pressed="true"]'), reg = b ? b.getAttribute('data-v') : 'piura';
     var Q = filas('caudales'), q = Q.filter(function (x) { return /Sánchez Cerro/.test(x.estacion); })[0];
-    var z = zona(), zt = ZT[z[0]];
-    if (e && e.temperatura != null) t.push('En ' + (e.estacion || 'Piura') + ' hay ' + num(e.temperatura, 0) + ' grados, ' + String(e.cielo || '').toLowerCase() + '.');
-    if (zt && z[0] !== '200101') t.push('En ' + z[1] + ', el modelo da ' + r0(zt.T) + ' grados.');
-    if (h) t.push('Hoy se espera ' + String(h.cielo || '').toLowerCase() + ', con máxima de ' + r0(h.tmax) + ' y mínima de ' + r0(h.tmin) + ' grados, y ' + r0(h.prob_lluvia) + ' por ciento de probabilidad de lluvia.');
-    if (V.length) {
-      var top = V[0];
-      t.push('Hay ' + V.length + (V.length === 1 ? ' aviso vigente' : ' avisos vigentes') + '. El primero: ' + String(top.peligro || top.documento || '').replace(/;.*$/, '') + ', nivel ' + String(top.nivel || '').toLowerCase() + '.');
-    } else t.push('No hay avisos vigentes.');
-    if (q) t.push('El río Piura en Sánchez Cerro lleva ' + r0(q.qm != null ? q.qm : q.q07) + ' metros cúbicos por segundo.');
+    var N = filas('nino_semanal'), n = N[N.length - 1];
+    if (reg === 'piura' && q) t.push('El río Piura en Sánchez Cerro lleva ' + r0(q.qm != null ? q.qm : q.q07) + ' metros cúbicos por segundo.');
     if (n && n.anom_nino12 != null) t.push('El mar en la región Niño uno más dos está ' + num(n.anom_nino12, 1) + ' grados sobre lo normal.');
     return t.join(' ');
   }
-  function escuchar() {
-    var txt = resumen();
-    if (!('speechSynthesis' in window)) { decir(esc(txt)); return; }
+  var VOCES = [];
+  function cargarVoces() { try { VOCES = speechSynthesis.getVoices() || []; } catch (e) {} }
+  if ('speechSynthesis' in window) { cargarVoces(); try { speechSynthesis.addEventListener('voiceschanged', cargarVoces); } catch (e) {} }
+  var HABLA = null;   // { btn, fin }
+  function callar() { if (HABLA) { var h = HABLA; HABLA = null; try { speechSynthesis.cancel(); } catch (e) {} h.fin(); } }
+  function hablar(texto, btn) {
+    callar();
+    if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) { decir(esc(texto)); return false; }
     try {
-      speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(txt), vs = speechSynthesis.getVoices() || [];
-      var voz = vs.filter(function (x) { return /^es[-_](PE|419|US|MX|CO|CL|AR)/i.test(x.lang); })[0] || vs.filter(function (x) { return /^es/i.test(x.lang); })[0];
-      u.lang = voz ? voz.lang : 'es-PE'; if (voz) u.voice = voz; u.rate = 1;
-      var g = $('#tb-guia'); if (g) g.classList.add('gx-habla');
-      u.onend = u.onerror = function () { if (g) g.classList.remove('gx-habla'); };
-      speechSynthesis.speak(u);
-      decir(esc(txt));
-    } catch (e) { decir(esc(txt)); }
+      if (!VOCES.length) cargarVoces();
+      var voz = VOCES.filter(function (x) { return /^es[-_](PE|419|US|MX|CO|CL|AR)/i.test(x.lang); })[0] || VOCES.filter(function (x) { return /^es/i.test(x.lang); })[0];
+      var g = $('#tb-guia'), yo = {};
+      yo.btn = btn; yo.fin = function () {
+        if (g) g.classList.remove('gx-habla');
+        if (btn) { btn.classList.remove('sh-hablando'); btn.setAttribute('aria-pressed', 'false'); }
+      };
+      HABLA = yo; if (g) g.classList.add('gx-habla');
+      if (btn) { btn.classList.add('sh-hablando'); btn.setAttribute('aria-pressed', 'true'); }
+      // por frases: Chrome corta las lecturas largas
+      var F = texto.match(/[^.!?]+[.!?]*/g) || [texto];
+      F.forEach(function (fr, k) {
+        var u = new SpeechSynthesisUtterance(fr.trim());
+        u.lang = voz ? voz.lang : 'es-PE'; if (voz) u.voice = voz; u.rate = 0.95;
+        if (k === F.length - 1) u.onend = function () { if (HABLA === yo) { HABLA = null; yo.fin(); } };
+        u.onerror = function (ev) { if (HABLA === yo && ev.error !== 'interrupted' && ev.error !== 'canceled') { HABLA = null; yo.fin(); } };
+        speechSynthesis.speak(u);
+      });
+      return true;
+    } catch (e) { callar(); decir(esc(texto)); return false; }
+  }
+  function escuchar() { var txt = resumen(); if (hablar(txt, null)) decir(esc(txt)); }
+  function ponerParlante() {
+    var top = $('#tb-now .tb-now-top'); if (!top) return;
+    var b = $('#sh-parla');
+    if (!b) {
+      b = el('button', { type: 'button', 'class': 'sh-parla', id: 'sh-parla', 'aria-pressed': 'false' },
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        + '<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z" fill="currentColor"/><path class="sh-onda" d="M15.5 9a4 4 0 0 1 0 6"/><path class="sh-onda sh-onda2" d="M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>');
+      var lu = top.querySelector('.tb-now-lugar');
+      top.insertBefore(b, lu ? lu.nextSibling : top.firstChild);
+      if (lu && window.MutationObserver) try { new MutationObserver(function () { ponerParlante(); }).observe(lu, { childList: true, characterData: true, subtree: true }); } catch (e) {}
+      b.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        if (HABLA && HABLA.btn === b) { callar(); return; }
+        hablar(resumenCabecera(), b);
+      });
+    }
+    var l = 'Escuchar el resumen de ' + lugarCab();
+    if (b.getAttribute('aria-label') !== l) { b.setAttribute('aria-label', l); b.title = l; }
   }
 
   /* ---------- mis alertas (en Avisos) ---------- */
@@ -549,7 +628,7 @@
   var PASOS = [
     { s: '#sh-lugar', v: 'inicio', t: 'Tu ubicación', p: 'Toca aquí para elegir tu distrito. El botón de al lado te ubica donde estás. El mapa de calor y la tarjeta «En tu zona» usan este lugar.' },
     { s: '#sh-campana', v: 'inicio', t: 'Avisos y ríos', p: 'La campana cuenta los avisos vigentes y se pone roja si hay uno importante. Tócala para ver los avisos, los ríos y tus alertas.' },
-    { s: '#tb-now', v: 'inicio', t: 'El tiempo ahora', p: 'Lo medido en la estación elegida. Debajo están las demás estaciones: toca una para cambiar.' },
+    { s: '#tb-now', v: 'inicio', t: 'El tiempo ahora', p: 'El tiempo en la estación más cercana a ti. Toca el parlante y te leo el resumen. Debajo están las demás estaciones: toca una para cambiar.' },
     { s: '#sh-c-hoy', v: 'inicio', t: 'Pronóstico de hoy', p: 'El cielo, la lluvia y la mínima y máxima de hoy, con los tres días que vienen.' },
     { s: '.sh-nav', v: 'inicio', t: 'Las cinco secciones', p: 'Inicio, Pronóstico, Radar/satélite, Mapa de calor y El Niño, siempre a un toque desde abajo.' },
     { s: '#tb-g-ava', v: 'inicio', t: 'Gotita', p: 'Tócame cuando quieras: te leo el resumen, activo tus alertas de lluvia o te ayudo a instalar la app.', fin: true }
