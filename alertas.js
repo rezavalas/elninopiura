@@ -233,6 +233,9 @@
   }
 
   /* ---------- avisos vigentes en las regiones con alertas ---------- */
+  function distintos(L) {   // un aviso por distrito (el más grave, porque la lista ya va ordenada)
+    var vis = {}; return L.filter(function (a) { if (vis[a.ub]) return false; vis[a.ub] = 1; return true; });
+  }
   var VIG = null;
   function vigentes() {
     if (VIG) return VIG;
@@ -242,7 +245,8 @@
         if (!emitida || !mapa || Date.now() - new Date(emitida) > 3 * 3600e3) return { emitida: emitida, lista: [] };
         var orden = { 'crecida fuerte': 0, fuerte: 1, crecida: 2, lluvia: 3, 'se acerca': 4 }, lista = Object.keys(mapa).map(function (u) {
           var a = mapa[u].mapValue.fields, v = function (k) { return a[k] ? a[k].stringValue : ''; };
-          return { u: u, distrito: v('distrito'), nivel: v('nivel'), titulo: v('titulo'), texto: v('texto'), region: regionDe(u) };
+          // desde el 23 nov. 2026 la crecida va aparte de la lluvia, con clave ubigeo + «r»; ub es el ubigeo del distrito
+          return { u: u, ub: v('ubigeo') || String(u).replace(/r$/, ''), tipo: v('tipo') || (/crecida/.test(v('nivel')) ? 'rio' : 'lluvia'), distrito: v('distrito'), nivel: v('nivel'), titulo: v('titulo'), texto: v('texto'), region: regionDe(u) };
         });
         lista.sort(function (a, b) { return (orden[a.nivel] - orden[b.nivel]) || a.distrito.localeCompare(b.distrito, 'es'); });
         return { emitida: emitida, lista: lista };
@@ -253,10 +257,11 @@
   function listaHtml(V) {
     if (!V.lista.length) return '<p class="tb-al-nada">Ahora no hay avisos de lluvia ni de crecida en ' + REGIONES.slice(0, -1).join(', ') + ' ni en ' + REGIONES[REGIONES.length - 1] + '.</p>';
     var hora = V.emitida ? new Date(V.emitida).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Lima' }) : '';
-    var h = '<p class="tb-al-vt"><b>Avisos vigentes:</b> ' + V.lista.length + ' distrito' + (V.lista.length > 1 ? 's' : '') + (hora ? ' · revisado a las ' + hora : '') + '</p><ul class="tb-al-lista">';
+    var nd = distintos(V.lista).length;
+    var h = '<p class="tb-al-vt"><b>Avisos vigentes:</b> ' + V.lista.length + ' en ' + nd + ' distrito' + (nd > 1 ? 's' : '') + (hora ? ' · revisado a las ' + hora : '') + '</p><ul class="tb-al-lista">';
     V.lista.forEach(function (a) {
       var n = NIVEL[a.nivel] || NIVEL.lluvia;
-      h += '<li><button type="button" data-u="' + a.u + '" data-r="' + a.region + '"><span class="tb-al-chip" style="color:' + n[1] + ';background:' + n[2] + '">' + n[0] + '</span>'
+      h += '<li><button type="button" data-u="' + a.ub + '" data-r="' + a.region + '"><span class="tb-al-chip" style="color:' + n[1] + ';background:' + n[2] + '">' + n[0] + '</span>'
         + '<b>' + escapar(a.distrito) + '</b> <span class="tb-al-rg">' + escapar(a.region) + '</span><small>' + escapar(a.texto.replace(/ Pronóstico orientativo\.$/, '')) + '</small></button></li>';
     });
     return h + '</ul>';
@@ -300,19 +305,20 @@
     if (!FB) return;
     vigentes().then(function (V) {
       if (!V.lista.length) return;
-      var mia = st.ubigeo && V.lista.filter(function (a) { return a.u === st.ubigeo; })[0];
-      if (mia) {   // hay aviso en el distrito elegido
+      var mias = st.ubigeo ? V.lista.filter(function (a) { return a.ub === st.ubigeo; }) : [];
+      if (mias.length) {   // hay aviso en el distrito elegido: lluvia, crecida o los dos (la lista ya va del más grave al menos grave)
         var clave = V.emitida + st.ubigeo; if (st.vista === clave) return;
         st.vista = clave; guardar();
-        sonar(true, mia.titulo + '. ' + mia.texto); notificar(mia.titulo, mia.texto, 'lluvia-' + mia.u);
-        return decir('<b>' + escapar(mia.titulo.replace(/^Gotita: /, '')) + '</b>. ' + escapar(mia.texto), [{ t: 'Entendido', prim: true, f: function () {} }]);
+        sonar(true, mias.map(function (a) { return a.titulo.replace(/^Gotita:\s*/, '') + '. ' + a.texto.replace(/\s*Pronóstico orientativo\.?$/, ''); }).join(' ') + ' Pronóstico orientativo.');
+        mias.forEach(function (a) { notificar(a.titulo, a.texto, 'lluvia-' + a.ub + (a.tipo === 'rio' ? '-rio' : '')); });
+        return decir(mias.map(function (a) { return '<b>' + escapar(a.titulo.replace(/^Gotita: /, '')) + '</b>. ' + escapar(a.texto); }).join('<br>'), [{ t: 'Entendido', prim: true, f: function () {} }]);
       }
       if (Date.now() - (st.region_visto || 0) < 3 * 3600e3) return;   // el resumen de la región, a lo más cada 3 horas
       st.region_visto = Date.now(); st.preguntado = 1; guardar();
-      var n = V.lista.length, nombres = V.lista.slice(0, 3).map(function (a) { return escapar(a.distrito) + (a.nivel === 'fuerte' ? ' (lluvia fuerte)' : /crecida/.test(a.nivel) ? ' (' + a.nivel + ')' : ''); });
+      var D = distintos(V.lista), n = D.length, nombres = D.slice(0, 3).map(function (a) { return escapar(a.distrito) + (a.nivel === 'fuerte' ? ' (lluvia fuerte)' : /crecida/.test(a.nivel) ? ' (' + a.nivel + ')' : ''); });
       var txt = 'Ahora hay avisos de lluvia o crecida en <b>' + n + ' distrito' + (n > 1 ? 's' : '') + '</b>: ' + nombres.join(', ') + (n > 3 ? ' y ' + (n - 3) + ' más' : '') + '.';
       sonar(false, txt + (st.ubigeo ? ' En ' + st.distrito + ' no hay aviso por ahora.' : ''));
-      if (st.ubigeo) notificar('Gotita: avisos de lluvia o crecida en ' + n + ' distrito' + (n > 1 ? 's' : ''), V.lista.slice(0, 3).map(function (a) { return a.distrito; }).join(', ') + (n > 3 ? ' y ' + (n - 3) + ' más' : '') + '. En ' + st.distrito + ' no hay aviso por ahora.', 'gotita-region');
+      if (st.ubigeo) notificar('Gotita: avisos de lluvia o crecida en ' + n + ' distrito' + (n > 1 ? 's' : ''), D.slice(0, 3).map(function (a) { return a.distrito; }).join(', ') + (n > 3 ? ' y ' + (n - 3) + ' más' : '') + '. En ' + st.distrito + ' no hay aviso por ahora.', 'gotita-region');
       if (st.ubigeo) decir(txt + ' En ' + escapar(st.distrito) + ' no hay aviso por ahora.', [{ t: 'Entendido', f: function () {} }, { t: 'Ver la lista', prim: true, f: hoja }]);
       else decir(txt + ' ¿Te aviso cuando venga lluvia a tu distrito?', [{ t: 'Ahora no', f: function () {} }, { t: 'Ver avisos y elegir', prim: true, f: hoja }]);
     });

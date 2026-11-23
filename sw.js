@@ -1,6 +1,6 @@
 /* App del Tablero El Niño Piura: guarda lo necesario para abrir sin señal.
    La app misma se pide primero a la red, así cada cambio llega solo; la página del día la guarda index.html. */
-var VERSION = 'elninopiura-13';
+var VERSION = 'elninopiura-14';
 var BASE = ['./', './index.html', './app.js', './alertas.js', './config.js', './shell.js', './shell.css', './leaflet.js', './leaflet.css', './distritos.json', './d3.min.js', './manifest.webmanifest', './icono-192.png', './icono-512.png', './icono-maskable-512.png', './icono-180.png', './favicon-32.png'];
 
 // Avisos de lluvia de Gotita (Firebase Cloud Messaging): llegan aunque la app esté cerrada.
@@ -18,7 +18,8 @@ if (FB) try {   // si la librería no carga (sin señal), la app igual funciona;
       cs.forEach(function (c) { c.postMessage({ tipo: 'aviso', titulo: d.titulo || '', texto: d.texto || '' }); });
     });
     return self.registration.showNotification(d.titulo || 'Gotita', {
-      body: d.texto || '', icon: 'icono-192.png', badge: 'icono-192.png', tag: 'lluvia-' + (d.ubigeo || ''), renotify: true,
+      body: d.texto || '', icon: 'icono-192.png', badge: 'icono-192.png', tag: 'lluvia-' + (d.ubigeo || '') + (d.tipo === 'rio' ? '-rio' : ''),   // lluvia y crecida del mismo distrito no se tapan
+      renotify: true,
       requireInteraction: true, silent: false, vibrate: VIBRA_SIRENA, data: { url: d.url || './', sirena: 1 },
       actions: [{ action: 'ver', title: 'Ver en la app' }]
     });
