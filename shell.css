@@ -180,3 +180,9 @@ html.sh-en-tour #tb-g-burbuja { display: none !important; }
 @keyframes sh-parla-pulso{0%{box-shadow:0 0 0 0 rgba(253,230,138,.6)}75%,100%{box-shadow:0 0 0 11px rgba(253,230,138,0)}}
 @keyframes sh-onda{0%,100%{opacity:.25}50%{opacity:1}}
 @media (prefers-reduced-motion:reduce){.sh-parla.sh-hablando,.sh-parla.sh-hablando .sh-onda{animation:none}}
+/* Fondo de la app según la hora de Lima (data-hora lo pone el tablero: alba, día, tarde, noche); la cabecera no cambia */
+html.sh body, html.sh .tb { transition: background-color 2s ease; }
+html.sh[data-hora="alba"] body, html.sh[data-hora="alba"] .tb { --tb-bg: #FCEBDD; background-color: #FCEBDD; }
+html.sh[data-hora="dia"] body, html.sh[data-hora="dia"] .tb { --tb-bg: #E6F2FC; background-color: #E6F2FC; }
+html.sh[data-hora="tarde"] body, html.sh[data-hora="tarde"] .tb { --tb-bg: #F6E4EC; background-color: #F6E4EC; }
+html.sh[data-hora="noche"] body, html.sh[data-hora="noche"] .tb { --tb-bg: #D5DAEE; background-color: #D5DAEE; }

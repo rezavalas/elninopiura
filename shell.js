@@ -492,7 +492,7 @@
     hoja('Gotita', '<div class="sh-dice">' + gotitaSvg() + '<div class="sh-globo">' + esc(saludo) + '</div></div>'
       + op('escuchar', 'voz', '#E0E7FF', '#3730A3', 'Escuchar el resumen de hoy', 'Te leo el tiempo, los avisos, el río y el mar')
       + op('recorrido', 'ruta', '#FCE7F3', '#BE185D', 'Recorrer la app', '6 pasos cortos para ubicarte')
-      + op('alertas', 'sirena', '#FFEDD5', '#C2410C', 'Mis alertas de lluvia', al && al.activas() ? al.etiqueta() + ' · tócalo para cambiar o probar' : 'Te aviso con sirena si viene lluvia a tu distrito')
+      + op('alertas', 'sirena', '#FFEDD5', '#C2410C', 'Mis alertas de lluvia', al && al.activas() ? al.etiqueta() + ' · tócalo para cambiar o probar' : 'Te aviso con mi voz si viene lluvia a tu distrito')
       + (instalada() ? '' : op('instalar', 'cel', '#DCFCE7', '#15803D', 'Instalar la app', 'Queda con su ícono en tu pantalla'))
       + op('fuentes', 'info', '#E0F2FE', '#075985', 'Fuentes y autor del tablero', 'SENAMHI, ENFEN, IGP, ANA, NOAA y Open-Meteo'), function (v) {
       v.addEventListener('click', function (ev) {
@@ -534,7 +534,7 @@
     else if (h['Máx']) hoy.push('máxima de ' + vozNum(h['Máx']) + ' grados');
     if (h.Lluvia) {
       var ll = h.Lluvia.split('·'), pr = vozNum(ll[0]).replace(/\s*%$/, '');
-      hoy.push(pr + ' por ciento de probabilidad de lluvia' + (ll[1] ? ', unos ' + ll[1].replace(/\s*mm/, '').trim() + ' milímetros' : ''));
+      hoy.push(pr + ' por ciento de probabilidad de lluvia' + (ll[1] ? ', unos ' + ll[1].replace(/\s*mm/, '').trim() + ' milímetros desde ahora hasta la noche' : ''));
     }
     if (hoy.length) t.push('Hoy, ' + hoy.join('; ') + '.');
     var d = pares('#now-dat'), dd = [];
@@ -594,6 +594,7 @@
     } catch (e) { callar(); decir(esc(texto)); return false; }
   }
   function escuchar() { var txt = resumen(); if (hablar(txt, null)) decir(esc(txt)); }
+  window.__tbHablar = function (t) { return hablar(t, null); };   // las alertas de Gotita usan la misma voz del parlante
   function ponerParlante() {
     var top = $('#tb-now .tb-now-top'); if (!top) return;
     var b = $('#sh-parla');
@@ -618,8 +619,8 @@
   function pintarMis() {
     var c = $('#sh-mis'); if (!c) return;
     var al = window.__tbAlertas, on = al && al.activas();
-    c.innerHTML = '<h3>Mis alertas de Gotita</h3><div class="sh-fila">' + gotitaSvg() + '<p>' + (on ? 'Te aviso con sirena cuando venga lluvia. <b>' + esc(al.etiqueta()) + '</b>.'
-      : 'Puedo avisarte, con sirena, cuando venga lluvia a tu distrito. Funciona aunque la app esté cerrada.') + '</p></div>'
+    c.innerHTML = '<h3>Mis alertas de Gotita</h3><div class="sh-fila">' + gotitaSvg() + '<p>' + (on ? 'Te aviso con mi voz cuando venga lluvia, con su probabilidad. <b>' + esc(al.etiqueta()) + '</b>.'
+      : 'Puedo avisarte con mi voz cuando venga lluvia a tu distrito, con su probabilidad. El aviso llega aunque la app esté cerrada.') + '</p></div>'
       + '<div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="sh-prim" data-al="1">' + (on ? 'Cambiar o probar' : 'Activar mis alertas') + '</button></div>';
   }
 

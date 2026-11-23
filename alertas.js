@@ -88,7 +88,6 @@
     var r = Math.PI / 180, x = Math.sin((a2 - a1) * r / 2), y = Math.sin((o2 - o1) * r / 2);
     return 12742 * Math.asin(Math.sqrt(x * x + Math.cos(a1 * r) * Math.cos(a2 * r) * y * y));
   }
-  var SIRENA_LINK = '<a href="sirena.mp3" download="Sirena Gotita.mp3">descarga la sirena</a>';
 
   /* ---------- la hoja para elegir el distrito ---------- */
   function hoja() {
@@ -103,7 +102,7 @@
       + ('geolocation' in navigator ? '<button type="button" class="tb-al-ubi">📍 Usar mi ubicación</button>' : '')
       + '<label class="tb-al-l" for="tb-al-sel">Distrito</label><select id="tb-al-sel" class="tb-al-sel"><option>Cargando…</option></select>'
       + '<p class="tb-al-priv">Solo se guarda tu distrito y un código anónimo del celular para enviarte el aviso; tu ubicación no se guarda. Puedes desactivarlo cuando quieras. Es un pronóstico orientativo del modelo.</p>'
-      + '<p class="tb-al-priv">🚨 El aviso llega con sirena. Con la app cerrada suena el tono de notificaciones del celular; para que también sea la sirena, ' + SIRENA_LINK + ' y elígela como sonido de las notificaciones de esta app (Ajustes → Notificaciones → El Niño Piura → Sonido).</p>'
+      + '<p class="tb-al-priv">🔊 El aviso llega con la probabilidad de lluvia. Con la app abierta, o al tocar el aviso, Gotita lo lee con la misma voz del parlante; con la app cerrada, el celular vibra y suena su tono de notificaciones.</p>'
       + '<div class="acc"></div><p class="tb-al-msg" aria-live="polite"></p></div>';
     estilos();
     document.body.appendChild(v);
@@ -157,8 +156,8 @@
       if (st.push) {
         var pr = document.createElement('button'); pr.type = 'button'; pr.className = 'tb-hb sec'; pr.textContent = 'Probar el aviso';
         pr.addEventListener('click', function () {
-          sonar();
-          notificar('Gotita: prueba de alerta', 'Así te llegará el aviso de lluvia para ' + (st.distrito || 'tu distrito') + '.', 'gotita-prueba').then(function (ok) {
+          sonar(true, 'Prueba de alerta. Así te avisaré cuando venga lluvia a ' + (st.distrito || 'tu distrito') + ', con la probabilidad y los milímetros previstos.');
+          notificar('Gotita: prueba de alerta', 'Así te llegará el aviso de lluvia para ' + (st.distrito || 'tu distrito') + ', con su probabilidad.', 'gotita-prueba').then(function (ok) {
             msg.innerHTML = ok ? 'Te mandé un aviso de prueba. ' + AYUDA_EMERGENTE : 'El celular no dejó mostrar el aviso: revisa que las notificaciones de esta app estén permitidas.';
           });
         });
@@ -223,7 +222,7 @@
       }
       msg.textContent = 'Activando los avisos…';
       return codigoCelular().then(guardarSuscripcion).then(function () {
-        sonar(); notificar('Gotita: alertas activadas', 'Así te llegará el aviso cuando venga lluvia a ' + d[1] + '.', 'gotita-prueba');   // el globo del celular no lee negritas
+        sonar(true, 'Alertas activadas. Te avisaré con mi voz cuando venga lluvia a ' + d[1] + '.'); notificar('Gotita: alertas activadas', 'Así te llegará el aviso cuando venga lluvia a ' + d[1] + '.', 'gotita-prueba');   // el globo del celular no lee negritas
         fin('Listo. Gotita te avisará si viene lluvia a ' + nombre + '. Te mandé un aviso de prueba. ' + AYUDA_EMERGENTE + ' Es un pronóstico orientativo; las alertas oficiales las dan el SENAMHI y el INDECI.');
       });
     }).catch(function (e) {
@@ -264,38 +263,25 @@
   }
 
   /* ---------- sonido de alerta y aviso arriba de la pantalla ---------- */
-  var AYUDA_EMERGENTE = 'Si el aviso no apareció arriba de la pantalla o no sonó: mantén presionado el aviso de Gotita en la barra de notificaciones → ⚙ (Ajustes) → elige <b>Alerta</b> y activa <b>Mostrar como emergente</b> y el <b>sonido</b>. Para que con la app cerrada suene la sirena, ' + SIRENA_LINK + ' y elígela en <b>Sonido</b>.';
-  // Vibración en pulsos largos, como sirena (Android 8 o más usa la del canal de notificaciones).
-  var VIBRA_SIRENA = [800, 200, 800, 200, 800, 200, 800];
-  function sonar(fuerte) {   // sirena que sube y baja (650 ↔ 1450 Hz), 4 ciclos; 1 ciclo si fuerte === false. La genera el navegador, sin archivos
-    if (Date.now() - (sonar.t || 0) < 15000) return;   // un mismo aviso puede pedir la sirena dos veces (al abrir y al leer el aviso): suena una
+  var AYUDA_EMERGENTE = 'Si el aviso no apareció arriba de la pantalla o no sonó: mantén presionado el aviso de Gotita en la barra de notificaciones → ⚙ (Ajustes) → elige <b>Alerta</b> y activa <b>Mostrar como emergente</b> y el <b>sonido</b>. Al tocar el aviso, Gotita lo lee en voz alta.';
+  // Vibración en pulsos (Android 8 o más usa la del canal de notificaciones).
+  var VIBRA_SIRENA = [500, 200, 500, 200, 500];
+  function sonar(fuerte, texto) {   // desde el 23 nov. 2026 sin sirena: vibra y Gotita lee el aviso con la voz del parlante
+    if (!texto && Date.now() - (sonar.t || 0) < 15000) return;
     sonar.t = Date.now();
-    try { if (navigator.vibrate) navigator.vibrate(fuerte === false ? [800] : VIBRA_SIRENA); } catch (e) {}
-    try {
-      var C = window.AudioContext || window.webkitAudioContext; if (!C) return;
-      var ctx = sonar.ctx || (sonar.ctx = new C()), hecho = false;
-      var tocar = function () {
-        if (hecho) return; hecho = true;
-        var per = 1.1, ciclos = fuerte === false ? 1 : 4, t0 = ctx.currentTime + 0.05, fin = t0 + per * ciclos;
-        var o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain(), g2 = ctx.createGain(), lp = ctx.createBiquadFilter();
-        o.type = 'sawtooth'; o2.type = 'square'; lp.type = 'lowpass'; lp.frequency.value = 3200; g2.gain.value = 0.35;
-        [o, o2].forEach(function (x) {
-          x.frequency.setValueAtTime(650, t0);
-          for (var i = 0; i < ciclos; i++) { x.frequency.linearRampToValueAtTime(1450, t0 + i * per + per / 2); x.frequency.linearRampToValueAtTime(650, t0 + (i + 1) * per); }
-        });
-        g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.2, t0 + 0.06);
-        g.gain.setValueAtTime(0.2, fin - 0.18); g.gain.exponentialRampToValueAtTime(0.0001, fin);
-        o.connect(lp); o2.connect(g2); g2.connect(lp); lp.connect(g); g.connect(ctx.destination);
-        o.start(t0); o2.start(t0); o.stop(fin + 0.02); o2.stop(fin + 0.02);
-      };
-      if (ctx.state === 'running') return tocar();
-      // el navegador puede pedir un toque antes de sonar: entonces suena con el primer toque (hasta 2 minutos después)
-      var p = ctx.resume(); if (p && p.then) p.then(function () { if (ctx.state === 'running') tocar(); }).catch(function () {});
-      var alTocar = function () { quitar(); ctx.resume().then(tocar).catch(function () {}); };
+    try { if (navigator.vibrate) navigator.vibrate(fuerte === false ? [300] : VIBRA_SIRENA); } catch (e) {}
+    if (!texto) return;
+    var t = String(texto).replace(/<[^>]+>/g, '').replace(/^Gotita:\s*/, '').replace(/\s*Pronóstico orientativo\.?$/, '');
+    var decirlo = function () { return window.__tbHablar ? window.__tbHablar(t) : false; };
+    if (!decirlo()) return;
+    // el navegador puede pedir un toque antes de hablar: entonces Gotita lo dice con el primer toque (hasta 2 minutos después)
+    setTimeout(function () {
+      try { if (speechSynthesis.speaking || speechSynthesis.pending) return; } catch (e) { return; }
+      var alTocar = function () { quitar(); decirlo(); };
       var quitar = function () { document.removeEventListener('pointerdown', alTocar, true); document.removeEventListener('keydown', alTocar, true); };
       document.addEventListener('pointerdown', alTocar, true); document.addEventListener('keydown', alTocar, true);
       setTimeout(quitar, 120000);
-    } catch (e) {}
+    }, 1500);
   }
   function notificar(titulo, texto, tag) {   // el globo de aviso del celular, también con la app abierta
     if (!('Notification' in window) || Notification.permission !== 'granted' || !('serviceWorker' in navigator)) return Promise.resolve(false);
@@ -318,14 +304,14 @@
       if (mia) {   // hay aviso en el distrito elegido
         var clave = V.emitida + st.ubigeo; if (st.vista === clave) return;
         st.vista = clave; guardar();
-        sonar(); notificar(mia.titulo, mia.texto, 'lluvia-' + mia.u);
+        sonar(true, mia.titulo + '. ' + mia.texto); notificar(mia.titulo, mia.texto, 'lluvia-' + mia.u);
         return decir('<b>' + escapar(mia.titulo.replace(/^Gotita: /, '')) + '</b>. ' + escapar(mia.texto), [{ t: 'Entendido', prim: true, f: function () {} }]);
       }
       if (Date.now() - (st.region_visto || 0) < 3 * 3600e3) return;   // el resumen de la región, a lo más cada 3 horas
       st.region_visto = Date.now(); st.preguntado = 1; guardar();
       var n = V.lista.length, nombres = V.lista.slice(0, 3).map(function (a) { return escapar(a.distrito) + (a.nivel === 'fuerte' ? ' (lluvia fuerte)' : ''); });
       var txt = 'Ahora hay avisos de lluvia en <b>' + n + ' distrito' + (n > 1 ? 's' : '') + '</b>: ' + nombres.join(', ') + (n > 3 ? ' y ' + (n - 3) + ' más' : '') + '.';
-      sonar(false);
+      sonar(false, txt + (st.ubigeo ? ' En ' + st.distrito + ' no hay aviso por ahora.' : ''));
       if (st.ubigeo) notificar('Gotita: avisos de lluvia en ' + n + ' distrito' + (n > 1 ? 's' : ''), V.lista.slice(0, 3).map(function (a) { return a.distrito; }).join(', ') + (n > 3 ? ' y ' + (n - 3) + ' más' : '') + '. En ' + st.distrito + ' no hay aviso por ahora.', 'gotita-region');
       if (st.ubigeo) decir(txt + ' En ' + escapar(st.distrito) + ' no hay aviso por ahora.', [{ t: 'Entendido', f: function () {} }, { t: 'Ver la lista', prim: true, f: hoja }]);
       else decir(txt + ' ¿Te aviso cuando venga lluvia a tu distrito?', [{ t: 'Ahora no', f: function () {} }, { t: 'Ver avisos y elegir', prim: true, f: hoja }]);
@@ -341,7 +327,7 @@
     firebaseListo().then(function () {
       firebase.messaging().onMessage(function (p) {   // aviso que llega con la app abierta: lo dice Gotita
         var d = (p && p.data) || {}; if (!d.titulo) return;
-        sonar(); notificar(d.titulo, d.texto || '', 'lluvia-' + (d.ubigeo || ''));
+        sonar(true, d.titulo + '. ' + (d.texto || '')); notificar(d.titulo, d.texto || '', 'lluvia-' + (d.ubigeo || ''));
         decir('<b>' + escapar(d.titulo.replace(/^Gotita: /, '')) + '</b>. ' + escapar(d.texto || ''), [{ t: 'Entendido', prim: true, f: function () {} }]);
       });
     }).catch(function () {});
@@ -365,12 +351,12 @@
     if (p) p.insertBefore(b, p.firstChild); else { p = document.createElement('p'); p.appendChild(b); pie.insertBefore(p, pie.firstChild); }
   }
   function sirenaDelAviso() {
-    if (/[?&]sirena=1/.test(location.search)) {   // se abrió tocando el aviso: suena la sirena y Gotita lo dice
+    if (/[?&]sirena=1/.test(location.search)) {   // se abrió tocando el aviso: vibra y Gotita lo dice con su voz
       try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
       sonar(); st.vista = ''; guardar();
     }
     if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function (e) {
-      if (e.data && e.data.tipo === 'sirena') sonar();
+      if (e.data && (e.data.tipo === 'aviso' || e.data.tipo === 'sirena')) sonar(true, e.data.titulo ? e.data.titulo + '. ' + (e.data.texto || '') : '');
     });
   }
   function iniciar() { sirenaDelAviso(); alPie(); setTimeout(function () { alertaVigente(); mantener(); preguntar(); }, 2500); }
