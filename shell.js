@@ -124,7 +124,7 @@
     pron: { tab: 'tab-tiempo', nav: 'pron', t: 'Pronóstico', s: 'Diez días por estación y la lluvia hora por hora' },
     reg: { tab: 'tab-graf', nav: 'pron', t: 'Registro', s: 'Gráficas por estación, de 24 horas a 1 año' },
     radar: { tab: 'tab-vivo', nav: 'radar', t: 'Radar y satélite', s: 'Del SENAMHI: radar cada 5 min y satélite GOES-19 cada 10 min' },
-    calor: { tab: null, nav: 'calor', t: 'Mapa de calor', s: 'La temperatura de los 199 distritos del norte, según el modelo' },
+    calor: { tab: null, nav: 'calor', t: 'Mapa de calor', s: 'Temperatura y radiación UV de los 199 distritos del norte, según el modelo' },
     nino: { tab: 'tab-mar', nav: 'nino', t: 'El Niño Costero', s: 'El mar, el ICEN y la probabilidad oficial del ENFEN' },
     avisos: { tab: 'tab-avisos', nav: null, t: 'Avisos y ríos', s: 'Lo vigente primero; después los ríos y los impactos' }
   };
@@ -674,7 +674,44 @@
   window.addEventListener('resize', function () { if (TOURA) mostrarPaso(); });
 
   /* ---------- mapa de calor ---------- */
-  var CAL = { mapa: null, datos: null, h: 0, capa: null, etq: null, yo: null, cache: {}, D: null, base: null };
+  // 24 nov. 2026: el mapa también muestra la radiación UV (índice UV máximo de hoy y de mañana, categorías de la OMS)
+  var CAL = { mapa: null, datos: null, h: 0, capa: null, etq: null, yo: null, cache: {}, D: null, base: null, modo: LS.get('tb-sh-calmodo', 'temp') === 'uv' ? 'uv' : 'temp', uv: null, d: 0 };
+  var UV_CAT = [[3, 'bajo', [78, 180, 0], 'No hace falta protección especial.'],
+    [6, 'moderado', [230, 200, 0], 'Al mediodía busca sombra y usa gorra y bloqueador.'],
+    [8, 'alto', [248, 89, 0], 'Usa bloqueador FPS 30 o más, sombrero y lentes de sol; busca sombra de 10:00 a 16:00.'],
+    [11, 'muy alto', [216, 0, 29], 'Evita el sol de 10:00 a 16:00; bloqueador cada 2 horas, sombrero de ala ancha, lentes y ropa que cubra.'],
+    [99, 'extremo', [107, 73, 200], 'Evita salir al sol de 10:00 a 16:00; si sales, bloqueador cada 2 horas, sombrero de ala ancha, lentes y ropa que cubra.']];
+  function uvCat(v) { var r = Math.round(v); for (var i = 0; i < UV_CAT.length; i++) if (r < UV_CAT[i][0]) return UV_CAT[i]; return UV_CAT[UV_CAT.length - 1]; }
+  function datosUV(D) {
+    var c = CAL.uv || LS.get('tb-sh-uv', null), hoy = horaLima().slice(0, 10);
+    if (c && c.n === D.length && Date.now() - c.t < 60 * 60e3 && c.f && c.f[0] === hoy) return Promise.resolve(c);
+    return pronGH().then(function (j) {
+      if (!j.uv_max) throw new Error('sin UV');
+      var f = null, con = 0;
+      var U = D.map(function (d) {
+        var x = (j.uv_max[d[0]] || []).filter(function (r) { return r[0] >= hoy; });
+        if (x.length) { con++; if (!f) f = x.map(function (r) { return r[0]; }); }
+        return x.map(function (r) { return r[1]; });
+      });
+      if (con < D.length * 0.8 || !f || f[0] !== hoy) throw new Error('incompleto');
+      var o = { t: Date.now(), n: D.length, fuente: 'gh', consulta: horaDe(j.generado), f: f, U: U };
+      LS.set('tb-sh-uv', o);
+      return o;
+    }).catch(function () { return uvRelay(D); });
+  }
+  function uvRelay(D) {   // respaldo: un pedido por el relay, guardado una hora
+    var url = RELAY + '?latitude=' + D.map(function (d) { return d[4]; }).join(',') + '&longitude=' + D.map(function (d) { return d[5]; }).join(',')
+      + '&daily=uv_index_max&forecast_days=2&timezone=America%2FLima';
+    return fetch(url).then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('El modelo no respondió (' + r.status + '). Prueba en un momento.')); })
+      .then(function (j) {
+        var a = Array.isArray(j) ? j : [j];
+        if (a.length !== D.length) throw new Error('El modelo devolvió datos incompletos. Prueba en un momento.');
+        var o = { t: Date.now(), n: D.length, fuente: 'relay', consulta: horaDe(new Date().toISOString()), f: (a[0].daily && a[0].daily.time) || [],
+          U: a.map(function (x) { return (x.daily && x.daily.uv_index_max) || []; }) };
+        LS.set('tb-sh-uv', o);
+        return o;
+      });
+  }
   var pLeaf = null;
   function leaflet() {
     if (window.L && window.L.map) return Promise.resolve();
@@ -716,9 +753,10 @@
         return o;
       });
   }
-  function valores() { var d = CAL.datos; return CAL.h === 0 ? d.ahora.map(function (x) { return x[0]; }) : d.T.map(function (x) { return x[CAL.h]; }); }
+  function valores() { if (CAL.modo === 'uv') return CAL.uv.U.map(function (x) { return x[CAL.d] != null ? x[CAL.d] : null; }); var d = CAL.datos; return CAL.h === 0 ? d.ahora.map(function (x) { return x[0]; }) : d.T.map(function (x) { return x[CAL.h]; }); }
   var RAMPA = [[14, [37, 99, 235]], [18, [6, 182, 212]], [22, [34, 197, 94]], [26, [234, 179, 8]], [30, [249, 115, 22]], [34, [220, 38, 38]], [38, [162, 28, 175]]];
   function color(t) {
+    if (CAL.modo === 'uv') return uvCat(t)[2];
     if (t <= RAMPA[0][0]) return RAMPA[0][1];
     for (var i = 1; i < RAMPA.length; i++) if (t <= RAMPA[i][0]) {
       var a = RAMPA[i - 1], b = RAMPA[i], f = (t - a[0]) / (b[0] - a[0]);
@@ -760,13 +798,13 @@
     return { url: cv.toDataURL('image/png'), b: b };
   }
   function pintarCapa() {
-    var D = CAL.D, V = valores(), k = CAL.h;
+    var D = CAL.D, V = valores(), k = CAL.modo === 'uv' ? 'uv' + CAL.d : CAL.h;
     var R = CAL.cache[k] || (CAL.cache[k] = raster(D, V));
     if (CAL.capa) CAL.mapa.removeLayer(CAL.capa);
     CAL.capa = L.imageOverlay(R.url, R.b, { opacity: 0.58, interactive: false, className: 'sh-capa' }).addTo(CAL.mapa);
     if (CAL.etq) CAL.mapa.removeLayer(CAL.etq);
     CAL.etq = L.layerGroup(D.map(function (d, i) {
-      return L.marker([d[4], d[5]], { interactive: false, keyboard: false, icon: L.divIcon({ className: '', iconSize: null, html: '<span class="sh-tl">' + r0(V[i]) + '°</span>' }) });
+      return L.marker([d[4], d[5]], { interactive: false, keyboard: false, icon: L.divIcon({ className: '', iconSize: null, html: '<span class="sh-tl">' + (CAL.modo === 'uv' ? 'UV ' + r0(V[i]) : r0(V[i]) + '°') + '</span>' }) });
     }));
     etiquetas();
     lecturaZona();
@@ -777,6 +815,13 @@
     var z = zona(), out = $('#sh-cal-zona'); if (!out || !CAL.datos) return;
     var i = -1; CAL.D.forEach(function (d, j) { if (d[0] === z[0]) i = j; });
     if (i < 0) { out.textContent = ''; return; }
+    if (CAL.modo === 'uv') {
+      var u = CAL.uv && CAL.uv.U[i] ? CAL.uv.U[i][CAL.d] : null;
+      if (u == null) { out.textContent = 'Sin índice UV para ' + z[1] + '.'; return; }
+      var ca = uvCat(u);
+      out.innerHTML = '<b>' + esc(z[1]) + '</b> (' + esc(z[2]) + '): índice UV máximo ' + (CAL.d ? 'de mañana' : 'de hoy') + ' <b style="color:rgb(' + ca[2].join(',') + ')">' + r0(u) + ' · ' + ca[1] + '</b>. ' + ca[3];
+      return;
+    }
     var a = CAL.datos.ahora[i], t = CAL.h === 0 ? a[0] : CAL.datos.T[i][CAL.h];
     out.innerHTML = '<b>' + esc(z[1]) + '</b> (' + esc(z[2]) + '): <b style="color:#BE123C">' + r0(t) + ' °C</b> ' + (CAL.h === 0
       ? 'ahora' + (a[1] != null ? ' · sensación de ' + r0(a[1]) + ' °C' : '') + (a[2] != null ? ' · humedad de ' + r0(a[2]) + ' %' : '') : 'a las ' + horaTxt(CAL.h));
@@ -785,6 +830,8 @@
     var r = idw(la, lo, CAL.D, valores());
     if (r.t == null || r.d > MASCARA) return '<div class="sh-pop">' + (titulo ? '<b style="font-size:14px">' + esc(titulo) + '</b><br>' : '') + 'Fuera de la zona del mapa: Tumbes, Piura, Lambayeque y La Libertad.</div>';
     var d = CAL.D[r.i];
+    if (CAL.modo === 'uv') return '<div class="sh-pop">' + (titulo ? '<b style="font-size:14px">' + esc(titulo) + '</b><br>' : '') + '<b>≈ UV ' + r0(r.t) + '</b> · ' + uvCat(r.t)[1] + ', máximo ' + (CAL.d ? 'de mañana' : 'de hoy')
+      + '<br>Cerca de ' + esc(d[1]) + ' (' + esc(d[2]) + ')<br><small>' + uvCat(r.t)[3] + '</small></div>';
     return '<div class="sh-pop">' + (titulo ? '<b style="font-size:14px">' + esc(titulo) + '</b><br>' : '') + '<b>≈ ' + r0(r.t) + ' °C</b> ' + (CAL.h === 0 ? 'ahora' : 'a las ' + horaTxt(CAL.h))
       + '<br>Cerca de ' + esc(d[1]) + ' (' + esc(d[2]) + ')</div>';
   }
@@ -846,16 +893,13 @@
         var z = zona();
         CAL.mapa = L.map('sh-mapa', { zoomControl: true, preferCanvas: true, attributionControl: true }).setView([z[4], z[5]], 9);
         CAL.mapa.attributionControl.setPrefix(false);
-        CAL.mapa.attributionControl.addAttribution('Temperatura: <a href="https://open-meteo.com/">Open-Meteo</a>');
+        CAL.mapa.attributionControl.addAttribution('Temperatura y UV: <a href="https://open-meteo.com/">Open-Meteo</a>');
         base().then(function (t) { CAL.base = t.addTo(CAL.mapa); });
         CAL.mapa.on('zoomend', etiquetas);
         CAL.mapa.on('click', function (ev) { L.popup({ maxWidth: 240 }).setLatLng(ev.latlng).setContent(popTemp(ev.latlng.lat, ev.latlng.lng)).openOn(CAL.mapa); });
-        pintarHoras(); pintarCapa();
-        var f = $('#sh-cal-fuente');
-        if (f) f.textContent = 'Pronóstico por hora de Open-Meteo en las capitales de ' + D.length + ' distritos de Tumbes, Piura, Lambayeque y La Libertad, interpolado entre ellas'
-          + (dat.fuente === 'gh' ? ' (se renueva cada media hora; esta versión es de las ' + dat.consulta + ' h).' : ' (consultado a las ' + dat.consulta + ' h).')
-          + ' Es una guía del modelo: lo medido está en las estaciones.';
         caja.hidden = true;
+        return ponerModo(CAL.modo);
+      }).then(function () {
         if (!LS.get('tb-sh-ubico', 0)) { LS.set('tb-sh-ubico', 1); ubicarEnMapa(true); }
         else if (navigator.permissions && navigator.permissions.query) navigator.permissions.query({ name: 'geolocation' }).then(function (s) { if (s.state === 'granted') ubicarEnMapa(true); }).catch(function () {});
       });
@@ -864,8 +908,38 @@
       var b = $('#sh-cal-otra'); if (b) b.addEventListener('click', function () { if (CAL.mapa) { CAL.mapa.remove(); CAL.mapa = null; } abrirCalor(); });
     });
   }
+  function fuenteCalor() {
+    var f = $('#sh-cal-fuente'), D = CAL.D, dat = CAL.modo === 'uv' ? CAL.uv : CAL.datos; if (!f || !dat) return;
+    var cuando = dat.fuente === 'gh' ? ' (se renueva cada hora; esta versión es de las ' + dat.consulta + ' h).' : ' (consultado a las ' + dat.consulta + ' h).';
+    f.textContent = CAL.modo === 'uv'
+      ? 'Índice UV máximo del día (cielo con nubes incluido) que pronostica Open-Meteo en las capitales de ' + D.length + ' distritos, interpolado entre ellas' + cuando
+        + ' Categorías de la Organización Mundial de la Salud. Es una guía del modelo; el SENAMHI publica el índice UV oficial.'
+      : 'Pronóstico por hora de Open-Meteo en las capitales de ' + D.length + ' distritos de Tumbes, Piura, Lambayeque y La Libertad, interpolado entre ellas' + cuando
+        + ' Es una guía del modelo: lo medido está en las estaciones.';
+  }
+  function leyenda() {
+    var b = $('#sh-ley-b'), e = $('#sh-ley-e'); if (!b || !e) return;
+    if (CAL.modo === 'uv') {
+      b.style.background = 'linear-gradient(90deg,#4EB400 0 20%,#E6C800 20% 40%,#F85900 40% 60%,#D8001D 60% 80%,#6B49C8 80%)';
+      e.innerHTML = '<span>0–2 bajo</span><span>3–5</span><span>6–7 alto</span><span>8–10</span><span>11+ extremo</span>';
+    } else { b.style.background = ''; e.innerHTML = '<span>14°</span><span>18°</span><span>22°</span><span>26°</span><span>30°</span><span>34°</span><span>38°</span>'; }
+  }
+  function ponerModo(m) {
+    CAL.modo = m; LS.set('tb-sh-calmodo', m);
+    document.querySelectorAll('#sh-cal-modo button').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-m') === m ? 'true' : 'false'); });
+    var msg = $('#sh-cal-msg');
+    if (msg) msg.textContent = m === 'uv' ? 'Toca cualquier punto del mapa para ver su índice UV.' : 'Toca cualquier punto del mapa para ver su temperatura.';
+    var listo = m === 'uv' && !CAL.uv ? datosUV(CAL.D).then(function (u) { CAL.uv = u; }) : Promise.resolve();
+    return listo.then(function () { leyenda(); pintarHoras(); pintarCapa(); fuenteCalor(); })
+      .catch(function (e) { if (msg) msg.textContent = (e && e.message) || 'No se pudo cargar el índice UV.'; if (m === 'uv') ponerModo('temp'); });
+  }
   function pintarHoras() {
     var c = $('#sh-cal-horas'); if (!c || !CAL.datos) return;
+    if (CAL.modo === 'uv') {
+      var fs = (CAL.uv && CAL.uv.f || []).slice(0, 2);
+      c.innerHTML = fs.map(function (f, k) { return '<button type="button" data-d="' + k + '" aria-pressed="' + (k === CAL.d) + '">' + (k ? 'Mañana' : 'Hoy') + ' · UV máximo</button>'; }).join('');
+      return;
+    }
     var hs = [0, 3, 6, 9, 12].filter(function (k) { return k === 0 || CAL.datos.horas[k]; });
     c.innerHTML = hs.map(function (k) { return '<button type="button" data-h="' + k + '" aria-pressed="' + (k === CAL.h) + '">' + (k ? horaTxt(k) + ' h' : 'Ahora') + '</button>'; }).join('');
   }
@@ -890,10 +964,11 @@
       '<button type="button" data-v="pron">Pronóstico</button><button type="button" data-v="reg">Registro (gráficas)</button>');
     var pt = $('#tiempo'); if (pt) tb.insertBefore(seg, pt);
     var cal = el('section', { id: 'sh-calor', 'aria-label': 'Mapa de calor' },
-      '<div class="sh-horas" id="sh-cal-horas" role="group" aria-label="Hora"></div>'
+      '<div class="sh-seg" id="sh-cal-modo" role="group" aria-label="Qué mostrar" style="margin:0 0 10px"><button type="button" data-m="temp">Temperatura</button><button type="button" data-m="uv">Radiación UV</button></div>'
+      + '<div class="sh-horas" id="sh-cal-horas" role="group" aria-label="Hora"></div>'
       + '<div class="sh-mapa-caja"><div id="sh-mapa" role="region" aria-label="Mapa de calor de la temperatura"></div><div class="sh-mapa-msg" id="sh-mapa-msg" role="status">Cargando…</div>'
       + '<button type="button" class="sh-yo-btn" id="sh-cal-yo" aria-label="Ubicarme en el mapa">' + ic('gps', 24, '#12146A') + '</button>'
-      + '<div class="sh-leyenda" aria-hidden="true"><div class="sh-leyenda-b"></div><div class="sh-leyenda-e"><span>14°</span><span>18°</span><span>22°</span><span>26°</span><span>30°</span><span>34°</span><span>38°</span></div></div></div>'
+      + '<div class="sh-leyenda" aria-hidden="true"><div class="sh-leyenda-b" id="sh-ley-b"></div><div class="sh-leyenda-e" id="sh-ley-e"><span>14°</span><span>18°</span><span>22°</span><span>26°</span><span>30°</span><span>34°</span><span>38°</span></div></div></div>'
       + '<div class="sh-card"><h3>Tu zona</h3><p id="sh-cal-zona" style="margin:0;font-size:14.5px;line-height:1.5"></p><p class="sh-fuente" id="sh-cal-msg" role="status">Toca cualquier punto del mapa para ver su temperatura.</p>'
       + '<p class="sh-fuente" id="sh-cal-fuente"></p></div>');
     var pie = $('#tb .tb-footer'); tb.insertBefore(cal, pie || null);
@@ -916,8 +991,15 @@
       if (ev.target.closest('[data-al]')) abrirAlertas();
     });
     $('#sh-cal-horas').addEventListener('click', function (ev) {
+      var bd = ev.target.closest('button[data-d]');
+      if (bd && CAL.uv) { CAL.d = +bd.getAttribute('data-d'); pintarHoras(); pintarCapa(); return; }
       var b = ev.target.closest('button[data-h]'); if (!b || !CAL.datos) return;
       CAL.h = +b.getAttribute('data-h'); pintarHoras(); pintarCapa();
+    });
+    $('#sh-cal-modo').addEventListener('click', function (ev) {
+      var b = ev.target.closest('button[data-m]'); if (!b) return;
+      var m = b.getAttribute('data-m'); if (m === CAL.modo && CAL.mapa) return;
+      if (CAL.mapa) ponerModo(m); else { CAL.modo = m; LS.set('tb-sh-calmodo', m); }
     });
     $('#sh-cal-yo').addEventListener('click', function () { if (CAL.mapa) ubicarEnMapa(false); });
     // Gotita abre su menú (los consejos de cada sección siguen saliendo solos)
