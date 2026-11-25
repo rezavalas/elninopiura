@@ -189,3 +189,5 @@ html.sh[data-hora="noche"] body, html.sh[data-hora="noche"] .tb { --tb-bg: #D5DA
 /* horario más probable de la lluvia (25 nov. 2026) */
 .sh-hoy .sh-hoy-v { display: block; margin-top: 3px; font-size: 13px; font-weight: 650; color: #0B4A8B; }
 .sh-dia .sh-dia-h { font-size: 11px; font-weight: 700; color: #1D4ED8; line-height: 1.25; }
+/* hojas de la app (alertas, instalar): encima de la barra de abajo, para que sus botones se vean (25 nov. 2026) */
+body .tb-velo { z-index: 2000; }

@@ -122,10 +122,12 @@
       + '<label class="tb-al-l" for="tb-al-sel">Distrito</label><select id="tb-al-sel" class="tb-al-sel"><option>Cargando…</option></select>'
       + '<p class="tb-al-priv">Solo se guarda tu distrito (y el tipo de aviso, si eliges uno) con un código anónimo del celular para enviarte el aviso; tu ubicación no se guarda. Puedes desactivarlo cuando quieras. Es un pronóstico orientativo del modelo.</p>'
       + '<p class="tb-al-priv">🔊 El aviso de lluvia llega con su probabilidad y la hora en que es más probable. Al tocar un aviso, Gotita lo lee con la voz del parlante; con la app cerrada, el celular vibra y suena su tono de notificaciones. Al abrir la app, Gotita muestra cada aviso nuevo una sola vez y el de crecida sin voz; «Entendido» la hace callar.</p>'
-      + '<div class="acc"></div><p class="tb-al-msg" aria-live="polite"></p></div>';
+      + '<p class="tb-al-msg" aria-live="polite"></p><div class="acc tb-al-acc"></div></div>';
     estilos();
     document.body.appendChild(v);
     var sel = v.querySelector('select'), msg = v.querySelector('.tb-al-msg'), acc = v.querySelector('.acc');
+    // la respuesta de «Guardar» o «Activar» se ve aunque la persona esté arriba de la hoja
+    if (window.MutationObserver) try { new MutationObserver(function () { if (msg.textContent) msg.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }).observe(msg, { childList: true, characterData: true, subtree: true }); } catch (e) {}
     var region = REGIONES.indexOf(st.region) >= 0 ? st.region : 'Piura';
     function llenar() {
       v.querySelectorAll('.tb-al-reg button').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-r') === region ? 'true' : 'false'); });
@@ -237,6 +239,10 @@
       + '.tb-al-rg{color:#66768C;font-size:.8rem}'
       + '.tb-al-ubi{display:block;width:100%;font:inherit;font-weight:700;border:1px solid #C9D4E3;border-radius:9px;padding:9px;margin:0 0 12px;background:#fff;color:#0B2545;cursor:pointer}'
       + '.tb-al-ubi:disabled{opacity:.6}'
+      // la hoja va encima de la barra de abajo de la app (Inicio, Pronóstico, Radar…) y los botones quedan siempre a la vista
+      + '#tb-al-hoja.tb-velo{z-index:2500}#tb-al-hoja .tb-hoja{max-height:calc(100dvh - 24px);padding-bottom:calc(14px + env(safe-area-inset-bottom))}'
+      + '#tb-al-hoja .tb-al-acc{position:sticky;bottom:calc(-14px - env(safe-area-inset-bottom));z-index:2;display:flex;flex-wrap:wrap;gap:8px;margin:12px -18px 0;padding:10px 18px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #E2E8F0;box-shadow:0 -6px 14px rgba(15,23,42,.08)}'
+      + '#tb-al-hoja .tb-al-acc .tb-hb{flex:1 1 auto;justify-content:center;min-height:44px;font-size:1rem}'
       + '.tb-al-pest{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:3px;border-radius:10px;background:#E2E8F0;margin:0 0 8px}'
       + '.tb-al-pest button{font:inherit;font-size:.86rem;font-weight:700;border:0;border-radius:8px;padding:7px 4px;background:transparent;color:#334155;cursor:pointer}'
       + '.tb-al-pest button[aria-selected="true"]{background:#fff;color:#0B2545;box-shadow:0 1px 2px rgba(15,23,42,.15)}'
