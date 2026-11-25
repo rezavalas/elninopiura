@@ -373,6 +373,17 @@
     var h = hoyLima();
     return { lugar: e, R: R.filter(function (r) { return String(r.fecha).slice(0, 10) >= h; }) };
   }
+  // horario más probable e intensidad de la lluvia de un día (los calcula la página con sus 48 horas; si la página
+  // todavía es la anterior, los de la actualización diaria)
+  function ventanaApp(r, est) {
+    if (!r) return null;
+    if (window.TB_VENTANA) { try { return window.TB_VENTANA(r, est); } catch (e) {} }
+    var p = Number(r.prob_lluvia), mm = Number(r.lluvia_mm);
+    if (r.ll_ini == null || !(mm >= 0.1 || p >= 20)) return null;
+    if (String(r.fecha).slice(0, 10) === hoyLima() && Number(r.ll_fin) <= Number(horaLima().slice(11, 13))) return null;
+    var a = Number(r.ll_ini), b = Number(r.ll_fin), rg = b - a >= 20 ? 'todo el día' : a + '–' + b + ' h';
+    return { ini: a, fin: b, intensidad: r.ll_int || '', rango: rg, texto: (b - a >= 20 ? 'probable casi todo el día' : 'más probable de ' + a + ' a ' + b + ' h') + (r.ll_int ? '; intensidad ' + r.ll_int : '') };
+  }
   function pintarInicio() {
     ponerParlante();
     var c = $('#sh-c-hoy'); if (!c) return;
@@ -380,11 +391,15 @@
     if (!h) { c.innerHTML = '<h3>Pronóstico de hoy</h3><p class="sh-fuente">El pronóstico se está actualizando.</p>'; return; }
     var lo = 16, hi = 38, pmin = Math.max(0, Math.min(100, (h.tmin - lo) / (hi - lo) * 100)), pmax = Math.max(0, Math.min(100, (h.tmax - lo) / (hi - lo) * 100));
     var dias = R.slice(1, 4).map(function (r) {
+      var v = ventanaApp(r, P0.lugar);
       return '<div class="sh-dia"><b>' + dia(r.fecha) + '</b>' + icCielo(r.cielo) + '<small>' + esc(r.cielo) + '</small><strong>' + r0(r.tmax) + '° <span style="color:#44546A;font-weight:600">/ '
-        + r0(r.tmin) + '°</span></strong><em>' + ic('gota', 12, '#0369A1', 2.4).replace('<svg', '<svg style="display:inline;vertical-align:-1px"') + ' ' + r0(r.prob_lluvia) + ' %</em></div>';
+        + r0(r.tmin) + '°</span></strong><em>' + ic('gota', 12, '#0369A1', 2.4).replace('<svg', '<svg style="display:inline;vertical-align:-1px"') + ' ' + r0(r.prob_lluvia) + ' %</em>'
+        + (v ? '<small class="sh-dia-h" title="Horario más probable; intensidad ' + esc(v.intensidad) + '">' + esc(v.rango) + (v.intensidad ? '<br>' + esc(v.intensidad) : '') + '</small>' : '') + '</div>';
     }).join('');
+    var V0 = ventanaApp(h, P0.lugar);
     c.innerHTML = '<div class="sh-cab"><h3>Pronóstico de hoy · ' + esc(P0.lugar) + '</h3><span class="sh-chip">' + dia(h.fecha) + '</span></div>'
-      + '<div class="sh-hoy"><span class="sh-hoy-ic">' + icCielo(h.cielo, 34) + '</span><span><b>' + esc(h.cielo) + '</b><span>Lluvia de ' + num(h.lluvia_mm, 1) + ' mm · probabilidad de ' + r0(h.prob_lluvia) + ' %</span></span></div>'
+      + '<div class="sh-hoy"><span class="sh-hoy-ic">' + icCielo(h.cielo, 34) + '</span><span><b>' + esc(h.cielo) + '</b><span>Lluvia de ' + num(h.lluvia_mm, 1) + ' mm · probabilidad de ' + r0(h.prob_lluvia) + ' %</span>'
+      + (V0 ? '<span class="sh-hoy-v">' + esc(V0.texto.charAt(0).toUpperCase() + V0.texto.slice(1)) + '</span>' : '') + '</span></div>'
       + '<div class="sh-rango"><div class="sh-rango-l"><span style="color:#0369A1">Mín. ' + r0(h.tmin) + '°</span><span style="color:#C2410C">Máx. ' + r0(h.tmax) + '°</span></div>'
       + '<div class="sh-rango-b" aria-hidden="true"><i style="left:' + pmin.toFixed(1) + '%;border:4px solid #0369A1"></i><i style="left:' + pmax.toFixed(1) + '%;border:4px solid #C2410C"></i></div>'
       + '<div class="sh-rango-e"><span>' + lo + '°</span><span>' + hi + '°</span></div></div>'
@@ -492,7 +507,7 @@
     hoja('Gotita', '<div class="sh-dice">' + gotitaSvg() + '<div class="sh-globo">' + esc(saludo) + '</div></div>'
       + op('escuchar', 'voz', '#E0E7FF', '#3730A3', 'Escuchar el resumen de hoy', 'Te leo el tiempo, los avisos, el río y el mar')
       + op('recorrido', 'ruta', '#FCE7F3', '#BE185D', 'Recorrer la app', '6 pasos cortos para ubicarte')
-      + op('alertas', 'sirena', '#FFEDD5', '#C2410C', 'Mis alertas de lluvia', al && al.activas() ? al.etiqueta() + ' · tócalo para cambiar o probar' : 'Te aviso con mi voz si viene lluvia a tu distrito')
+      + op('alertas', 'sirena', '#FFEDD5', '#C2410C', 'Mis alertas de lluvia y ríos', al && al.activas() ? al.etiqueta() + ' · tócalo para cambiar o probar' : 'Te aviso si viene lluvia o puede crecer el río en tu distrito')
       + (instalada() ? '' : op('instalar', 'cel', '#DCFCE7', '#15803D', 'Instalar la app', 'Queda con su ícono en tu pantalla'))
       + op('fuentes', 'info', '#E0F2FE', '#075985', 'Fuentes y autor del tablero', 'SENAMHI, ENFEN, IGP, ANA, NOAA y Open-Meteo'), function (v) {
       v.addEventListener('click', function (ev) {
@@ -535,6 +550,10 @@
     if (h.Lluvia) {
       var ll = h.Lluvia.split('·'), pr = vozNum(ll[0]).replace(/\s*%$/, '');
       hoy.push(pr + ' por ciento de probabilidad de lluvia' + (ll[1] ? ', unos ' + ll[1].replace(/\s*mm/, '').trim() + ' milímetros desde ahora hasta la noche' : ''));
+    }
+    if (h['Lluvia más probable']) {   // «13–24 h · fuerte»
+      var vm = h['Lluvia más probable'].split('·'), rg = vm[0].trim();
+      hoy.push('la lluvia es más probable ' + (/todo/.test(rg) ? 'casi todo el día' : 'de ' + rg.replace(/\s*h$/, '').replace('–', ' a ') + ' horas') + (vm[1] ? ', con intensidad ' + vm[1].trim() : ''));
     }
     if (hoy.length) t.push('Hoy, ' + hoy.join('; ') + '.');
     var d = pares('#now-dat'), dd = [];
@@ -593,8 +612,19 @@
       return true;
     } catch (e) { callar(); decir(esc(texto)); return false; }
   }
-  function escuchar() { var txt = resumen(); if (hablar(txt, null)) decir(esc(txt)); }
-  window.__tbHablar = function (t) { return hablar(t, null); };   // las alertas de Gotita usan la misma voz del parlante
+  function escuchar() { var txt = resumen(); vigilarBurbuja(); if (hablar(txt, null)) decir(esc(txt)); }
+  window.__tbHablar = function (t) { vigilarBurbuja(); return hablar(t, null); };   // las alertas de Gotita usan la misma voz del parlante
+  window.__tbCallar = callar;
+  // si la persona cierra la burbuja de Gotita («Entendido», «Ahora no», la ×, Escape o tocar a Gotita), deja de leer;
+  // el cierre solo, pasados unos segundos, no la corta, y la lectura del parlante de la cabecera sigue aparte
+  var BURB = null;
+  function vigilarBurbuja() {
+    var g = document.getElementById('tb-guia');
+    if (!g || BURB === g) return;
+    BURB = g;
+    g.addEventListener('click', function (ev) { if (ev.target.closest && ev.target.closest('button') && HABLA && !HABLA.btn) callar(); }, true);
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && HABLA && !HABLA.btn) callar(); });
+  }
   function ponerParlante() {
     var top = $('#tb-now .tb-now-top'); if (!top) return;
     var b = $('#sh-parla');
@@ -619,8 +649,8 @@
   function pintarMis() {
     var c = $('#sh-mis'); if (!c) return;
     var al = window.__tbAlertas, on = al && al.activas();
-    c.innerHTML = '<h3>Mis alertas de Gotita</h3><div class="sh-fila">' + gotitaSvg() + '<p>' + (on ? 'Te aviso con mi voz cuando venga lluvia, con su probabilidad. <b>' + esc(al.etiqueta()) + '</b>.'
-      : 'Puedo avisarte con mi voz cuando venga lluvia a tu distrito, con su probabilidad. El aviso llega aunque la app esté cerrada.') + '</p></div>'
+    c.innerHTML = '<h3>Mis alertas de Gotita</h3><div class="sh-fila">' + gotitaSvg() + '<p>' + (on ? 'Te aviso cuando venga lluvia (con su probabilidad y la hora más probable) o pueda crecer el río, según lo que elegiste. <b>' + esc(al.etiqueta()) + '</b>.'
+      : 'Puedo avisarte cuando venga lluvia a tu distrito, con su probabilidad y la hora más probable, o cuando pueda crecer el río. Eliges uno o los dos; el aviso llega aunque la app esté cerrada.') + '</p></div>'
       + '<div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="sh-prim" data-al="1">' + (on ? 'Cambiar o probar' : 'Activar mis alertas') + '</button></div>';
   }
 

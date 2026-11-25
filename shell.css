@@ -186,3 +186,6 @@ html.sh[data-hora="alba"] body, html.sh[data-hora="alba"] .tb { --tb-bg: #FCEBDD
 html.sh[data-hora="dia"] body, html.sh[data-hora="dia"] .tb { --tb-bg: #E6F2FC; background-color: #E6F2FC; }
 html.sh[data-hora="tarde"] body, html.sh[data-hora="tarde"] .tb { --tb-bg: #F6E4EC; background-color: #F6E4EC; }
 html.sh[data-hora="noche"] body, html.sh[data-hora="noche"] .tb { --tb-bg: #D5DAEE; background-color: #D5DAEE; }
+/* horario más probable de la lluvia (25 nov. 2026) */
+.sh-hoy .sh-hoy-v { display: block; margin-top: 3px; font-size: 13px; font-weight: 650; color: #0B4A8B; }
+.sh-dia .sh-dia-h { font-size: 11px; font-weight: 700; color: #1D4ED8; line-height: 1.25; }
